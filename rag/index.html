@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Synthesia Interactive Avatar — RAG Quickstart</title>
+  <style>
+    body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif;
+           display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; }
+    video { max-width: min(90vw, 720px); border-radius: 12px; background: #000; }
+    button { font-size: 1rem; padding: 0.6rem 1.6rem; border-radius: 8px; border: 0; cursor: pointer; }
+
+    /* Pipeline-status pill — exposes the live tool chain (KB → LLM → speech).
+       Single colour on purpose: amber/green would read as a health indicator
+       (slow / OK), which misleads — every stage here is normal operation. */
+    #pill { display: inline-flex; align-items: center; gap: 0.55rem;
+            padding: 0.4rem 0.95rem; border-radius: 999px; font-size: 0.85rem;
+            background: #1c1c1c; border: 1px solid #2c4c74; color: #6cbcff; }
+    #pill.hidden { display: none; }
+    #pill .dot { width: 0.6rem; height: 0.6rem; border-radius: 50%;
+                 background: currentColor; animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  </style>
+</head>
+<body>
+  <h2>Synthesia Interactive Avatar — Knowledge-Grounded (RAG)</h2>
+  <p id="status">Click Start and allow the microphone.</p>
+  <button id="start">Start</button>
+  <div id="media"></div>
+  <div id="pill" class="hidden"><span class="dot"></span><span id="pill-text"></span></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+  <script>
+    const { Room, RoomEvent } = LivekitClient;
+    const status = document.getElementById('status');
+    const button = document.getElementById('start');
+    const pill = document.getElementById('pill');
+    const pillText = document.getElementById('pill-text');
+    const decoder = new TextDecoder();
+    let room = null;
+
+    function showStage(stage, label) {
+      pill.dataset.stage = stage;
+      pillText.textContent = label;
+      pill.classList.remove('hidden');
+    }
+
+    function resetUI(message) {
+      status.textContent = message;
+      pill.classList.add('hidden');
+      button.textContent = 'Start';
+      button.disabled = false;
+      room = null;
+    }
+
+    async function start() {
+      button.disabled = true;
+      status.textContent = 'Connecting…';
+      showStage('loading', 'Connecting…');   // immediate feedback; server refines it
+      try {
+        const { url, token } = await (await fetch('/token')).json();
+        room = new Room();
+        // The avatar is a regular LiveKit participant. Attach both its tracks to
+        // ONE element so they share a MediaStream.
+        let media;
+        room.on(RoomEvent.TrackSubscribed, (track) => {
+          if (!media) {
+            media = document.createElement('video');
+            document.getElementById('media').appendChild(media);
+          }
+          track.attach(media);
+          if (track.kind === 'video') {
+            status.textContent = 'Connected — say hello!';
+            button.textContent = 'Stop';   // Start becomes Stop once the avatar is live
+            button.disabled = false;
+          }
+        });
+        // The agent publishes its pipeline stage on the 'pipeline-status' topic.
+        room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+          if (topic !== 'pipeline-status') return;
+          try {
+            const { stage, label } = JSON.parse(decoder.decode(payload));
+            showStage(stage, label);
+          } catch (_) { /* ignore malformed packets */ }
+        });
+        room.on(RoomEvent.Disconnected, () => resetUI('Disconnected — click Start to talk again.'));
+        await room.connect(url, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        status.textContent = 'Connected — waiting for the avatar to join';
+      } catch (err) {
+        resetUI('Failed to connect: ' + err.message);
+      }
+    }
+
+    async function stop() {
+      button.disabled = true;
+      status.textContent = 'Stopping…';
+      // Disconnecting ends the session cleanly — the agent job closes and the avatar
+      // leaves. (This does NOT stop the local agent/server processes.)
+      if (room) await room.disconnect();   // the Disconnected handler resets the UI
+    }
+
+    button.onclick = () => (room ? stop() : start());
+  </script>
+</body>
+</html>

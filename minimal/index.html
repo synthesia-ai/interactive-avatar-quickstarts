@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Synthesia Interactive Avatar — Quickstart</title>
+  <style>
+    body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif;
+           display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; }
+    video { max-width: min(90vw, 720px); border-radius: 12px; background: #000; }
+    button { font-size: 1rem; padding: 0.6rem 1.6rem; border-radius: 8px; border: 0; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h2>Synthesia Interactive Avatar</h2>
+  <p id="status">Click Start and allow the microphone.</p>
+  <button id="start">Start</button>
+  <div id="media"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+  <script>
+    const { Room, RoomEvent } = LivekitClient;
+    const status = document.getElementById('status');
+    const button = document.getElementById('start');
+
+    button.onclick = async () => {
+      button.disabled = true;
+      status.textContent = 'Connecting…';
+      try {
+        const { url, token } = await (await fetch('/token')).json();
+        const room = new Room();
+        // The avatar is a regular LiveKit participant. Attach both its tracks to
+        // ONE element so they share a MediaStream.
+        let media;
+        room.on(RoomEvent.TrackSubscribed, (track) => {
+          if (!media) {
+            media = document.createElement('video');
+            document.getElementById('media').appendChild(media);
+          }
+          track.attach(media);
+          if (track.kind === 'video') status.textContent = 'Connected — say hello!';
+        });
+        room.on(RoomEvent.Disconnected, () => {
+          status.textContent = 'Disconnected — refresh to start again.';
+        });
+        await room.connect(url, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        status.textContent = 'Connected — waiting for the avatar to join';
+      } catch (err) {
+        status.textContent = 'Failed to connect: ' + err.message;
+        button.disabled = false;
+      }
+    };
+  </script>
+</body>
+</html>
