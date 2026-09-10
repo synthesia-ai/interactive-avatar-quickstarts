@@ -1,0 +1,7 @@
+livekit-agents[cartesia,openai,silero]~=1.6
+httpx  # Wikipedia retrieval (default), and used by livekit-agents 1.6.9 inference module
+python-dotenv
+livekit-plugins-synthesia~=0.1.0b3
+
+# Optional — only for KB_SOURCE=bedrock (the default Wikipedia path does not need it):
+#   pip install boto3

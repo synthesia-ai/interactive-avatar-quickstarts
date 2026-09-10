@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Synthesia Interactive Avatar — Tools Quickstart</title>
+  <style>
+    body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif;
+           display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; }
+    video { max-width: min(90vw, 720px); border-radius: 12px; background: #000; }
+    button { font-size: 1rem; padding: 0.6rem 1.6rem; border-radius: 8px; border: 0; cursor: pointer; }
+
+    /* The form the avatar fills in — ids must match FIELDS in agent.py. */
+    #form { width: min(90vw, 420px); background: #1c1c1c; padding: 1.2rem; border-radius: 12px; }
+    #form fieldset { border: 0; padding: 0; margin: 0; display: grid;
+                     grid-template-columns: auto 1fr; gap: 0.6rem 0.8rem; align-items: center; }
+    #form fieldset:disabled { opacity: 0.55; }
+    #form button { grid-column: 2; justify-self: start; }
+    input { font-size: 1rem; padding: 0.45rem 0.6rem; border-radius: 6px;
+            border: 1px solid #333; background: #111; color: #eee; color-scheme: dark;
+            transition: border-color 0.9s, box-shadow 0.9s; }
+    /* Flash when the AVATAR set the value, so agent writes are visibly its doing. */
+    input.flash { transition: none; border-color: #6cbcff;
+                  box-shadow: 0 0 0 3px rgba(108, 188, 255, 0.35); }
+    #form-note { margin: 0 0 0.8rem; font-size: 0.85rem; color: #999; }
+  </style>
+</head>
+<body>
+  <h2>Synthesia Interactive Avatar — Tools</h2>
+  <p id="status">Click Start and allow the microphone.</p>
+  <button id="start">Start</button>
+  <div id="media"></div>
+
+  <form id="form">
+    <p id="form-note">The avatar fills this in as you talk — and you can type into it too.</p>
+    <fieldset id="fields" disabled>
+      <label for="name">Name</label>   <input id="name" type="text" autocomplete="off" />
+      <label for="email">Email</label> <input id="email" type="email" autocomplete="off" />
+      <label for="date">Date</label>   <input id="date" type="date" />
+      <label for="topic">Topic</label> <input id="topic" type="text" autocomplete="off" />
+      <button type="submit">Submit</button>
+    </fieldset>
+  </form>
+
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+  <script>
+    const { Room, RoomEvent } = LivekitClient;
+    const status = document.getElementById('status');
+    const button = document.getElementById('start');
+    const fields = document.getElementById('fields');
+    const note = document.getElementById('form-note');
+    const FIELDS = ['name', 'email', 'date', 'topic'];   // must match agent.py
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+    let room = null;
+
+    // Both directions travel on the 'form' data topic — see the message shapes in agent.py.
+    async function send(msg) {
+      if (!room) return;
+      await room.localParticipant.publishData(
+        encoder.encode(JSON.stringify(msg)), { reliable: true, topic: 'form' });
+    }
+
+    FIELDS.forEach((f) => {
+      // 'change' fires on blur, not per keystroke, so the agent hears finished values.
+      document.getElementById(f).addEventListener('change', (e) =>
+        send({ type: 'field', field: f, value: e.target.value }));
+    });
+    document.getElementById('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      send({ type: 'submit' });
+    });
+
+    function onFormMessage(msg) {
+      if (msg.type === 'field' && FIELDS.includes(msg.field)) {
+        const input = document.getElementById(msg.field);
+        input.value = msg.value;
+        input.classList.add('flash');
+        setTimeout(() => input.classList.remove('flash'), 900);
+      } else if (msg.type === 'submitted') {
+        fields.disabled = true;
+        note.textContent = 'Submitted ✓ — see the record in the agent log.';
+      }
+    }
+
+    function resetUI(message) {
+      status.textContent = message;
+      fields.disabled = true;
+      button.textContent = 'Start';
+      button.disabled = false;
+      room = null;
+    }
+
+    async function start() {
+      button.disabled = true;
+      status.textContent = 'Connecting…';
+      try {
+        const { url, token } = await (await fetch('/token')).json();
+        room = new Room();
+        // The avatar is a regular LiveKit participant. Attach both its tracks to
+        // ONE element so they share a MediaStream.
+        let media;
+        room.on(RoomEvent.TrackSubscribed, (track) => {
+          if (!media) {
+            media = document.createElement('video');
+            document.getElementById('media').appendChild(media);
+          }
+          track.attach(media);
+          if (track.kind === 'video') {
+            status.textContent = 'Connected — say hello!';
+            fields.disabled = false;          // form is live once the avatar is
+            button.textContent = 'Stop';      // Start becomes Stop once the avatar is live
+            button.disabled = false;
+          }
+        });
+        room.on(RoomEvent.DataReceived, (payload, participant, kind, topic) => {
+          if (topic !== 'form') return;
+          try {
+            onFormMessage(JSON.parse(decoder.decode(payload)));
+          } catch (_) { /* ignore malformed packets */ }
+        });
+        room.on(RoomEvent.Disconnected, () => resetUI('Disconnected — click Start to talk again.'));
+        await room.connect(url, token);
+        await room.localParticipant.setMicrophoneEnabled(true);
+        status.textContent = 'Connected — waiting for the avatar to join';
+      } catch (err) {
+        resetUI('Failed to connect: ' + err.message);
+      }
+    }
+
+    async function stop() {
+      button.disabled = true;
+      status.textContent = 'Stopping…';
+      // Disconnecting ends the session cleanly — the agent job closes and the avatar
+      // leaves. (This does NOT stop the local agent/server processes.)
+      if (room) await room.disconnect();   // the Disconnected handler resets the UI
+    }
+
+    button.onclick = () => (room ? stop() : start());
+  </script>
+</body>
+</html>
