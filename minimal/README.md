@@ -48,7 +48,7 @@ All in `agent.py`:
 
 - **Personality** — edit `INSTRUCTIONS`.
 - **Voice** — set `CARTESIA_VOICE_ID` to any [Cartesia library voice](https://play.cartesia.ai/voices) (a free account is enough to browse; usage bills via LiveKit Inference).
-- **Custom / cloned voices** — LiveKit Inference only serves Cartesia's public library, so a [voice cloned](https://docs.cartesia.ai/build-with-cartesia/capability-guides/clone-voices) in your own Cartesia account needs the direct plugin instead: get a Cartesia API key, add `CARTESIA_API_KEY=` to `.env`, change `requirements.txt` to `livekit-agents[cartesia,openai,silero]`, and swap the `tts=` line to `cartesia.TTS(model="sonic-3.5", voice=CARTESIA_VOICE_ID)` (adding `cartesia` to the `livekit.plugins` import). TTS then bills to your Cartesia account rather than LiveKit.
+- **Custom / cloned voices** — LiveKit Inference only serves Cartesia's public library, so a [voice cloned](https://docs.cartesia.ai/build-with-cartesia/capability-guides/clone-voices) in your own Cartesia account needs the direct plugin instead: get a Cartesia API key, add `CARTESIA_API_KEY=` to `.env`, change `requirements.txt` to `livekit-agents[cartesia,openai,silero]`, and swap the `tts=` line to `cartesia.TTS(model="sonic-3.6", voice=CARTESIA_VOICE_ID)` (adding `cartesia` to the `livekit.plugins` import). TTS then bills to your Cartesia account rather than LiveKit.
 - **Avatar** — set `AVATAR_ID` to any avatar your Synthesia workspace has access to.
 - **Models** — swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/). Preflight is a no-op for non-Realtime models.
 

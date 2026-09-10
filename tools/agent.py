@@ -130,7 +130,7 @@ async def entrypoint(ctx: JobContext) -> None:
         stt=inference.STT(model="cartesia/ink-2"),
         # Tool calling works the same with any LiveKit-supported LLM provider.
         llm=openai.LLM(model="gpt-4o"),
-        tts=inference.TTS(model="cartesia/sonic-3.5", voice=CARTESIA_VOICE_ID),
+        tts=inference.TTS(model="cartesia/sonic-3.6", voice=CARTESIA_VOICE_ID),
         vad=ctx.proc.userdata["vad"],
         turn_handling={
             "turn_detection": "stt",

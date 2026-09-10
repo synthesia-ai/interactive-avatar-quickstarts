@@ -359,7 +359,7 @@ async def entrypoint(ctx: JobContext) -> None:
         # KB context we inject each turn — swap the model freely; the RAG hook is
         # independent of the provider.
         llm=openai.LLM(model="gpt-4o"),
-        tts=inference.TTS(model="cartesia/sonic-3.5", voice=CARTESIA_VOICE_ID),
+        tts=inference.TTS(model="cartesia/sonic-3.6", voice=CARTESIA_VOICE_ID),
         vad=ctx.proc.userdata["vad"],
         turn_handling={
             "turn_detection": "stt",
