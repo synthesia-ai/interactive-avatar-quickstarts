@@ -8,7 +8,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, cli, inference, metrics
-from livekit.plugins import cartesia, openai, silero, synthesia
+from livekit.plugins import openai, silero, synthesia
 
 from realtime_preflight import install_realtime_preflight_support
 
@@ -46,7 +46,7 @@ async def entrypoint(ctx: JobContext) -> None:
             modalities=["text"],
             turn_detection=None,
         ),
-        tts=cartesia.TTS(model="sonic-3.5", voice=CARTESIA_VOICE_ID),
+        tts=inference.TTS(model="cartesia/sonic-3.5", voice=CARTESIA_VOICE_ID),
         vad=ctx.proc.userdata["vad"],
         turn_handling={
             "turn_detection": "stt",

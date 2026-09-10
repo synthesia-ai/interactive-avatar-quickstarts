@@ -30,13 +30,13 @@ from livekit.agents import (
     llm,
     metrics,
 )
-from livekit.plugins import cartesia, openai, silero, synthesia
+from livekit.plugins import openai, silero, synthesia
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 logger = logging.getLogger("rag-avatar")
 
-# --- Avatar & voice (any avatar/voice your Synthesia + Cartesia accounts can use) ---
+# --- Avatar & voice (any Synthesia avatar; any Cartesia library voice — TTS billed via LiveKit Inference) ---
 AVATAR_ID = os.getenv("SYNTHESIA_AVATAR_ID", "7572faa9-15da-400d-8227-ef1ab8932523")  # Kenji (the Aristotle demo face)
 CARTESIA_VOICE_ID = os.getenv("CARTESIA_VOICE_ID", "b134c304-d095-4d2b-a77a-914f5e8e84e7")  # Sterling — Monarch (gravitas)
 
@@ -359,7 +359,7 @@ async def entrypoint(ctx: JobContext) -> None:
         # KB context we inject each turn — swap the model freely; the RAG hook is
         # independent of the provider.
         llm=openai.LLM(model="gpt-4o"),
-        tts=cartesia.TTS(model="sonic-3.5", voice=CARTESIA_VOICE_ID),
+        tts=inference.TTS(model="cartesia/sonic-3.5", voice=CARTESIA_VOICE_ID),
         vad=ctx.proc.userdata["vad"],
         turn_handling={
             "turn_detection": "stt",
