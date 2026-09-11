@@ -16,7 +16,7 @@ Honest caveat: this is prompt-based grounding — strong, but statistical, not a
 
 - Python **3.10–3.13** (3.13 recommended; the LiveKit plugins require < 3.14)
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
-- **Synthesia** API key with [Interactive Avatar access](https://www.synthesia.io/features/avatars/interactive-avatars)
+- **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
 - *(Only for `KB_SOURCE=bedrock`)* **AWS credentials** that can call `bedrock-agent-runtime:Retrieve`, and a **Bedrock managed knowledge base** — see [Grounding your own corpus with Bedrock](#grounding-your-own-corpus-with-bedrock)
 
@@ -154,7 +154,6 @@ All in `agent.py` (or via `.env`):
 - **The `/token` endpoint is unauthenticated.** The demo server binds to localhost and mints 15-minute, room-scoped tokens, so exposure is limited to your machine — but anyone who can reach the endpoint can dispatch an agent worker (which costs money), so a production endpoint must sit behind your app's authentication.
 - **Make agent dispatch explicit in production.** The worker dispatches to *every* new room in the LiveKit project, so anything that creates a room burns avatar minutes. Set `agent_name` in `WorkerOptions` and request the agent per-token via `RoomAgentDispatch` in the room config so dispatch is opt-in.
 - **Keep secrets server-side.** `SYNTHESIA_API_KEY`, `OPENAI_API_KEY`, and AWS credentials live only in `.env` (git-ignored) or your secrets manager — never in the frontend.
-- **Interactive Avatar is invite-only/workspace-gated** — confirm your workspace is allowlisted before expecting the avatar to join.
 
 ## Troubleshooting
 
@@ -163,7 +162,7 @@ All in `agent.py` (or via `.env`):
 | Avatar answers but ignores the KB / makes things up | Retrieval returned nothing. Check the CLI `retrieve` works; confirm you're using `managedSearchConfiguration`, the right `BEDROCK_KB_ID`, and the right `AWS_REGION`. |
 | `[KB] retrieve failed` in the log | AWS creds missing/expired, wrong region, or the role lacks `bedrock:Retrieve` on this KB. |
 | `ExpiredTokenException` / `InvalidSignatureException` | Temporary AWS credentials lapsed — refresh them. |
-| `SynthesiaAuthError` | Synthesia API key invalid, or workspace lacks Interactive Avatar access. |
+| `SynthesiaAuthError` | Synthesia API key invalid or expired. |
 | `UnknownAvatarError` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
 | `QuotaExceededError` | Synthesia minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, or `avatar.start()` ran after `session.start()`. |

@@ -10,7 +10,7 @@ The smallest useful [Synthesia Interactive Avatar](https://www.synthesia.io/feat
 
 - Python 3.10+
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
-- **Synthesia** API key with [Interactive Avatar access](https://www.synthesia.io/features/avatars/interactive-avatars)
+- **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
 ## Run it
@@ -58,7 +58,7 @@ All in `agent.py`:
 
 | Symptom | Likely cause / fix |
 | --- | --- |
-| `SynthesiaAuthError` | API key invalid, or the workspace doesn't have Interactive Avatar access. |
+| `SynthesiaAuthError` | API key invalid or expired. |
 | `UnknownAvatarError` | `AVATAR_ID` isn't available to your workspace. |
 | `QuotaExceededError` | Minute or concurrent-session cap hit. |
 | `SynthesiaTimeoutError` | Cold start took too long — retry; the agent already waits 60 s and retries transient errors. |

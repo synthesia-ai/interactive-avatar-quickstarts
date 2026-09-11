@@ -13,7 +13,7 @@ The form is a stand-in for any state your app shares with the avatar — a booki
 
 - Python **3.10–3.13** (3.13 recommended; the LiveKit plugins require < 3.14)
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
-- **Synthesia** API key with [Interactive Avatar access](https://www.synthesia.io/features/avatars/interactive-avatars)
+- **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
 ## Run it
@@ -101,7 +101,7 @@ Two deliberate choices worth copying:
 | The date field stays blank | `<input type="date">` silently ignores anything that isn't `YYYY-MM-DD` — the instructions tell the model this; check what `update_field` received in the agent log. |
 | Typing in the form does nothing | Edits only send on blur (the `change` event) — click out of the field. Also confirm the avatar has joined; the form is disabled until then. |
 | A field updates with a half-heard value mid-sentence | Preemptive generation got re-enabled — it must stay off with side-effecting tools (see `turn_handling`). |
-| `SynthesiaAuthError` | API key invalid, or the workspace doesn't have Interactive Avatar access. |
+| `SynthesiaAuthError` | API key invalid or expired. |
 | `UnknownAvatarError` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
 | `QuotaExceededError` | Minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, or `avatar.start()` ran after `session.start()`. |
