@@ -1,8 +1,8 @@
 # Synthesia Interactive Avatar — Minimal Quickstart
 
-The smallest useful [Synthesia Interactive Avatar](https://www.synthesia.io/features/avatars/interactive-avatars) app: a Python [LiveKit agent](https://docs.livekit.io/agents/) you can talk to, rendered as a photoreal, lip-synced avatar in your browser. Drop in four API keys and go.
+The smallest useful [Synthesia Interactive Avatar](https://www.synthesia.io/features/avatars/interactive-avatars) app: a Python [LiveKit agent](https://docs.livekit.io/agents/) you can talk to, rendered as a photoreal, lip-synced avatar in your browser. Drop in three API keys and go.
 
-**How it works:** the agent listens with Cartesia Ink-2 STT (via [LiveKit Inference](https://docs.livekit.io/agents/models/)), thinks with OpenAI Realtime used as a text-only streaming brain, and speaks with Cartesia Sonic TTS. The Synthesia plugin reroutes that speech to a hosted avatar worker, which joins the LiveKit room as a regular participant publishing lip-synced video. The frontend is a plain LiveKit client; it needs zero Synthesia-specific code.
+**How it works:** the agent listens with Cartesia Ink-2 STT, thinks with OpenAI Realtime used as a text-only streaming brain, and speaks with Cartesia Sonic TTS — both Cartesia models run through [LiveKit Inference](https://docs.livekit.io/agents/models/), billed to your LiveKit account, so no Cartesia key is needed. The Synthesia plugin reroutes that speech to a hosted avatar worker, which joins the LiveKit room as a regular participant publishing lip-synced video. The frontend is a plain LiveKit client; it needs zero Synthesia-specific code.
 
 **Latency:** `realtime_preflight.py` hides ~0.3–0.5 s per turn by starting the Realtime reply on the eager end-of-turn transcript. Look for `Adopting realtime preflight speculation` in the logs; disable with `REALTIME_PREFLIGHT_ENABLED=false`.
 
@@ -11,7 +11,6 @@ The smallest useful [Synthesia Interactive Avatar](https://www.synthesia.io/feat
 - Python 3.10+
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
 - **Synthesia** API key with [Interactive Avatar access](https://www.synthesia.io/features/avatars/interactive-avatars)
-- **Cartesia** API key from [play.cartesia.ai](https://play.cartesia.ai)
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
 ## Run it
@@ -20,7 +19,7 @@ The smallest useful [Synthesia Interactive Avatar](https://www.synthesia.io/feat
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env   # then fill in the four keys
+cp .env.example .env   # then fill in the three keys
 
 python agent.py dev    # terminal 1: the agent worker
 python server.py       # terminal 2: frontend at http://localhost:8080
@@ -48,7 +47,8 @@ The agent produces speech exactly as it always does; the plugin intercepts `sess
 All in `agent.py`:
 
 - **Personality** — edit `INSTRUCTIONS`.
-- **Voice** — set `CARTESIA_VOICE_ID` to any [Cartesia library voice](https://play.cartesia.ai/voices).
+- **Voice** — set `CARTESIA_VOICE_ID` to any [Cartesia library voice](https://play.cartesia.ai/voices) (a free account is enough to browse; usage bills via LiveKit Inference).
+- **Custom / cloned voices** — LiveKit Inference only serves Cartesia's public library, so a [voice cloned](https://docs.cartesia.ai/build-with-cartesia/capability-guides/clone-voices) in your own Cartesia account needs the direct plugin instead: get a Cartesia API key, add `CARTESIA_API_KEY=` to `.env`, change `requirements.txt` to `livekit-agents[cartesia,openai,silero]`, and swap the `tts=` line to `cartesia.TTS(model="sonic-3.6", voice=CARTESIA_VOICE_ID)` (adding `cartesia` to the `livekit.plugins` import). TTS then bills to your Cartesia account rather than LiveKit.
 - **Avatar** — set `AVATAR_ID` to any avatar your Synthesia workspace has access to.
 - **Models** — swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/). Preflight is a no-op for non-Realtime models.
 

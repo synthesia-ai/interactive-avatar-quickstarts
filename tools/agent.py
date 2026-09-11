@@ -29,13 +29,13 @@ from livekit.agents import (
     inference,
     metrics,
 )
-from livekit.plugins import cartesia, openai, silero, synthesia
+from livekit.plugins import openai, silero, synthesia
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 logger = logging.getLogger("tools-avatar")
 
-# --- Avatar & voice (any avatar/voice your Synthesia + Cartesia accounts can use) ---
+# --- Avatar & voice (any Synthesia avatar; any Cartesia library voice — TTS billed via LiveKit Inference) ---
 AVATAR_ID = os.getenv("SYNTHESIA_AVATAR_ID", "4b638067-6319-46e1-b634-371a4bdfceb9")  # Mei
 CARTESIA_VOICE_ID = os.getenv("CARTESIA_VOICE_ID", "db6b0ed5-d5d3-463d-ae85-518a07d3c2b4")  # Skylar
 
@@ -130,7 +130,7 @@ async def entrypoint(ctx: JobContext) -> None:
         stt=inference.STT(model="cartesia/ink-2"),
         # Tool calling works the same with any LiveKit-supported LLM provider.
         llm=openai.LLM(model="gpt-4o"),
-        tts=cartesia.TTS(model="sonic-3.5", voice=CARTESIA_VOICE_ID),
+        tts=inference.TTS(model="cartesia/sonic-3.6", voice=CARTESIA_VOICE_ID),
         vad=ctx.proc.userdata["vad"],
         turn_handling={
             "turn_detection": "stt",

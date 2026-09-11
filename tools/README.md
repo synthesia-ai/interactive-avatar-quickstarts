@@ -14,7 +14,6 @@ The form is a stand-in for any state your app shares with the avatar — a booki
 - Python **3.10–3.13** (3.13 recommended; the LiveKit plugins require < 3.14)
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
 - **Synthesia** API key with [Interactive Avatar access](https://www.synthesia.io/features/avatars/interactive-avatars)
-- **Cartesia** API key from [play.cartesia.ai](https://play.cartesia.ai)
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
 ## Run it
@@ -23,7 +22,7 @@ The form is a stand-in for any state your app shares with the avatar — a booki
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env   # then fill in the four keys
+cp .env.example .env   # then fill in the three keys
 
 python agent.py dev    # terminal 1: the agent worker
 python server.py       # terminal 2: frontend at http://localhost:8080
