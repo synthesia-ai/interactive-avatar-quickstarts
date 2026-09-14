@@ -26,7 +26,14 @@ async def token(request: web.Request) -> web.Response:
         .with_ttl(timedelta(minutes=15))  # only checked at join — sessions outlive it
         .with_grants(api.VideoGrants(room_join=True, room=room))
         # sync_streams keeps the avatar's audio and video in sync in the browser.
-        .with_room_config(api.RoomConfiguration(sync_streams=True))
+        # agents= dispatches the named worker into this room — required because
+        # agent.py sets agent_name (explicit dispatch); the two must stay in sync.
+        .with_room_config(
+            api.RoomConfiguration(
+                sync_streams=True,
+                agents=[api.RoomAgentDispatch(agent_name="avatar-quickstart-tools")],
+            )
+        )
         .to_jwt()
     )
     return web.json_response({"url": os.environ["LIVEKIT_URL"], "token": jwt, "room": room})

@@ -417,4 +417,12 @@ async def entrypoint(ctx: JobContext) -> None:
 
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
+    # agent_name makes dispatch explicit: the worker only joins rooms whose token
+    # requests it (server.py's RoomAgentDispatch) instead of every room in the project.
+    cli.run_app(
+        WorkerOptions(
+            entrypoint_fnc=entrypoint,
+            prewarm_fnc=prewarm,
+            agent_name="avatar-quickstart-rag",
+        )
+    )

@@ -52,7 +52,7 @@ All in `agent.py`:
 - **Avatar** — set `AVATAR_ID` to any avatar your Synthesia workspace has access to.
 - **Models** — swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/). Preflight is a no-op for non-Realtime models.
 
-`server.py` mints room tokens with `sync_streams=True` — keep that when you build your own token endpoint, it's what keeps the avatar's audio and video in sync in the browser. And keep `SYNTHESIA_API_KEY` server-side: it's a workspace-bound secret that must never reach frontend code.
+`server.py` mints room tokens with `sync_streams=True` (keeps the avatar's audio and video in sync in the browser) and a `RoomAgentDispatch` matching the worker's `agent_name` — dispatch is explicit, so without it the agent never joins, and without `agent_name` the worker would join *every* room in your LiveKit project. Keep both when you build your own token endpoint. And keep `SYNTHESIA_API_KEY` server-side: it's a workspace-bound secret that must never reach frontend code.
 
 ## Troubleshooting
 
@@ -62,5 +62,5 @@ All in `agent.py`:
 | `UnknownAvatarError` | `AVATAR_ID` isn't available to your workspace. |
 | `QuotaExceededError` | Minute or concurrent-session cap hit. |
 | `SynthesiaTimeoutError` | Cold start took too long — retry; the agent already waits 60 s and retries transient errors. |
-| Avatar never appears, no error | You're in `console` mode, or `avatar.start()` ran after `session.start()`. |
+| Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
