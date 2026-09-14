@@ -145,14 +145,14 @@ All in `agent.py` (or via `.env`):
 - **Voice / Avatar** — `CARTESIA_VOICE_ID` ([Cartesia voices](https://play.cartesia.ai/voices)) and `SYNTHESIA_AVATAR_ID` (any avatar your workspace can access).
 - **Models** — swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/); the RAG hook is provider-independent.
 
-`server.py` mints room tokens with `sync_streams=True` — keep that when you build your own token endpoint; it's what keeps the avatar's audio and video in sync in the browser. Keep `SYNTHESIA_API_KEY` (and your AWS credentials) server-side — they must never reach frontend code.
+`server.py` mints room tokens with `sync_streams=True` (avatar audio/video sync) and a `RoomAgentDispatch` matching the worker's `agent_name` (dispatch — see Security & production) — keep both when you build your own token endpoint. Keep `SYNTHESIA_API_KEY` (and your AWS credentials) server-side — they must never reach frontend code.
 
 ## Security & production
 
 > **Demo only — do not deploy as-is.** This is a local quickstart, not a production template.
 
 - **The `/token` endpoint is unauthenticated.** The demo server binds to localhost and mints 15-minute, room-scoped tokens, so exposure is limited to your machine — but anyone who can reach the endpoint can dispatch an agent worker (which costs money), so a production endpoint must sit behind your app's authentication.
-- **Make agent dispatch explicit in production.** The worker dispatches to *every* new room in the LiveKit project, so anything that creates a room burns avatar minutes. Set `agent_name` in `WorkerOptions` and request the agent per-token via `RoomAgentDispatch` in the room config so dispatch is opt-in.
+- **Agent dispatch is explicit.** The worker sets `agent_name` and only joins rooms whose token requests it via `RoomAgentDispatch` (`server.py`) — keep the two names in sync. Don't remove `agent_name`: an unnamed worker auto-joins *every* new room in the LiveKit project.
 - **Keep secrets server-side.** `SYNTHESIA_API_KEY`, `OPENAI_API_KEY`, and AWS credentials live only in `.env` (git-ignored) or your secrets manager — never in the frontend.
 - **Interactive Avatar is invite-only/workspace-gated** — confirm your workspace is allowlisted before expecting the avatar to join.
 
@@ -166,5 +166,5 @@ All in `agent.py` (or via `.env`):
 | `SynthesiaAuthError` | Synthesia API key invalid, or workspace lacks Interactive Avatar access. |
 | `UnknownAvatarError` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
 | `QuotaExceededError` | Synthesia minute or concurrent-session cap hit. |
-| Avatar never appears, no error | You're in `console` mode, or `avatar.start()` ran after `session.start()`. |
+| Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
