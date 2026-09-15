@@ -101,8 +101,8 @@ Two deliberate choices worth copying:
 | The date field stays blank | `<input type="date">` silently ignores anything that isn't `YYYY-MM-DD` — the instructions tell the model this; check what `update_field` received in the agent log. |
 | Typing in the form does nothing | Edits only send on blur (the `change` event) — click out of the field. Also confirm the avatar has joined; the form is disabled until then. |
 | A field updates with a half-heard value mid-sentence | Preemptive generation got re-enabled — it must stay off with side-effecting tools (see `turn_handling`). |
-| `SynthesiaAuthError` | API key invalid or expired. |
-| `UnknownAvatarError` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
-| `QuotaExceededError` | Minute or concurrent-session cap hit. |
+| `SynthesiaError` with `type` `AUTH` | API key invalid or expired. |
+| `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
+| `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |

@@ -64,13 +64,13 @@ async def entrypoint(ctx: JobContext) -> None:
         synthesia.AvatarConfig(avatar_ids=[AVATAR_ID]),
         join_timeout=60.0,
     )
-    # Retry transient errors only; auth/quota/unknown-avatar are permanent.
+    # Retry only errors the plugin marks retryable (timeout, connection, rate limit).
     for attempt in range(3):
         try:
             await avatar.start(session, room=ctx.room)
             break
-        except (synthesia.SynthesiaConnectionError, synthesia.SynthesiaTimeoutError):
-            if attempt == 2:
+        except synthesia.SynthesiaError as e:
+            if not e.retryable or attempt == 2:
                 raise
             await asyncio.sleep(2 * (attempt + 1))
 

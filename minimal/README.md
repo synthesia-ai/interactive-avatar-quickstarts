@@ -58,9 +58,9 @@ All in `agent.py`:
 
 | Symptom | Likely cause / fix |
 | --- | --- |
-| `SynthesiaAuthError` | API key invalid or expired. |
-| `UnknownAvatarError` | `AVATAR_ID` isn't available to your workspace. |
-| `QuotaExceededError` | Minute or concurrent-session cap hit. |
-| `SynthesiaTimeoutError` | Cold start took too long — retry; the agent already waits 60 s and retries transient errors. |
+| `SynthesiaError` with `type` `AUTH` | API key invalid or expired. |
+| `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `AVATAR_ID` isn't available to your workspace. |
+| `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
+| `SynthesiaError` with `type` `TIMEOUT` | Cold start took too long — retry; the agent already waits 60 s and retries transient errors. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
