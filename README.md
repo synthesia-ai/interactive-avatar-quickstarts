@@ -12,4 +12,4 @@ Each recipe is self-contained — its own README, dependencies, and `.env.exampl
 
 ## Prerequisites
 
-Every recipe needs a **Synthesia API key** with [Interactive Avatar access](https://www.synthesia.io/features/avatars/interactive-avatars). Each recipe's README lists everything else it needs — providers, keys, and how to run it.
+Every recipe needs a **Synthesia API key** for [Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars). Each recipe's README lists everything else it needs — providers, keys, and how to run it.
