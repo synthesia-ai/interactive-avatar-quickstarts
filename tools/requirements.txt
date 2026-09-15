@@ -1,4 +1,4 @@
-livekit-agents[openai,silero]~=1.6
-httpx  # used but not declared by livekit-agents 1.6.9 (inference module)
+livekit-agents[openai,silero]~=1.8
+httpx
 python-dotenv
-livekit-plugins-synthesia~=0.1.0b3
+livekit-plugins-synthesia~=1.8

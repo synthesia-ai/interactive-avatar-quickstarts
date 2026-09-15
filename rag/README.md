@@ -162,8 +162,8 @@ All in `agent.py` (or via `.env`):
 | Avatar answers but ignores the KB / makes things up | Retrieval returned nothing. Check the CLI `retrieve` works; confirm you're using `managedSearchConfiguration`, the right `BEDROCK_KB_ID`, and the right `AWS_REGION`. |
 | `[KB] retrieve failed` in the log | AWS creds missing/expired, wrong region, or the role lacks `bedrock:Retrieve` on this KB. |
 | `ExpiredTokenException` / `InvalidSignatureException` | Temporary AWS credentials lapsed — refresh them. |
-| `SynthesiaAuthError` | Synthesia API key invalid or expired. |
-| `UnknownAvatarError` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
-| `QuotaExceededError` | Synthesia minute or concurrent-session cap hit. |
+| `SynthesiaError` with `type` `AUTH` | Synthesia API key invalid or expired. |
+| `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
+| `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Synthesia minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
