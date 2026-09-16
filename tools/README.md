@@ -1,13 +1,13 @@
 # Synthesia Interactive Avatar — Tools Quickstart
 
-A [Synthesia Interactive Avatar](https://www.synthesia.io/features/avatars/interactive-avatars) that **acts, not just talks**: it fills in a booking form on the page as you speak to it, and reacts out loud when you type into the form yourself. Built on the [minimal quickstart](../minimal/README.md): a Python [LiveKit agent](https://docs.livekit.io/agents/) rendered as a photoreal, lip-synced avatar in your browser.
+A [Synthesia Interactive Avatar](https://www.synthesia.io/features/avatars/interactive-avatars) that fills in a booking form on the page as you speak to it, and reacts out loud when you type into the form yourself. Built on the [minimal quickstart](../minimal/README.md): a Python [LiveKit agent](https://docs.livekit.io/agents/) rendered as a photoreal, lip-synced avatar in your browser.
 
-**The pattern this demonstrates** is LLM tool calling plus shared UI state, synced both ways over LiveKit data channels:
+The pattern is LLM tool calling plus shared UI state, synced both ways over LiveKit data channels:
 
-- **agent → browser**: the LLM calls a `@function_tool` (`update_field`), which publishes the change on a data topic; the browser renders it. The avatar visibly *does* something.
+- **agent → browser**: the LLM calls a `@function_tool` (`update_field`), which publishes the change on a data topic, and the browser renders it.
 - **browser → agent**: your manual edits (and the Submit click) publish back on the same topic; the agent updates its state and the avatar acknowledges out loud.
 
-The form is a stand-in for any state your app shares with the avatar — a booking, an onboarding flow, a support ticket, a shopping cart.
+The form is a stand-in for any state your app shares with the avatar: a booking, an onboarding flow, a support ticket, a shopping cart.
 
 ## Prerequisites
 
@@ -30,11 +30,11 @@ python server.py       # terminal 2: frontend at http://localhost:8080
 
 Open <http://localhost:8080>, click **Start**, and allow the microphone. Once the avatar joins, the form unlocks. Try both directions:
 
-1. **Speak**: "I'd like to book something — I'm Ada Lovelace, next Tuesday, about analytical engines." Watch the fields flash blue as the avatar fills them.
-2. **Type**: put your email straight into the form — the avatar notices and confirms it out loud.
+1. **Speak**: "I'd like to book something. I'm Ada Lovelace, next Tuesday, about analytical engines." Watch the fields flash blue as the avatar fills them.
+2. **Type**: put your email straight into the form; the avatar notices and confirms it out loud.
 3. Confirm verbally (or click **Submit**) and the agent validates, freezes the form, and logs the record.
 
-> Don't use `python agent.py console` — it runs a mock room and the avatar will silently never appear. Always test through a real room, like this frontend.
+> Don't use `python agent.py console`. It runs a mock room and the avatar will silently never appear. Always test through a real room, like this frontend.
 
 ## How it works
 
@@ -48,7 +48,7 @@ you type  ─► browser publishData ─► data_received handler
                         └─► agent state updated ─► generate_reply ─► the avatar reacts aloud
 ```
 
-Everything tools-specific in `agent.py` is two seams. The tool (agent → browser):
+Everything tools-specific in `agent.py` is two functions. The tool (agent → browser):
 
 ```python
 @function_tool
@@ -67,40 +67,40 @@ def on_data(packet):
     session.generate_reply(instructions=f"The visitor typed {msg['field']} themselves — acknowledge it.")
 ```
 
-Because the authoritative form lives in `FormAgent.form` — not in the LLM's conversation memory and not in the DOM — neither side can drift: the model reads it back with `get_form`, and `submit_form` validates against it, so a value you typed counts exactly like one the avatar heard.
+The authoritative form lives in `FormAgent.form`, not in the LLM's conversation memory or the DOM, so neither side can drift. The model reads it back with `get_form`, and `submit_form` validates against it, so a value you typed counts exactly like one the avatar heard.
 
-Two deliberate choices worth copying:
+Two choices worth copying:
 
-- **Preemptive generation is off** (`turn_handling` in `agent.py`). The framework can speculatively start a reply on an eager transcript; with side-effecting tools, that speculation could call `update_field` with a half-heard value and then be discarded. Speculation and side effects don't mix.
+- **Preemptive generation is off** (`turn_handling` in `agent.py`). The framework can speculatively start a reply on an eager transcript; with side-effecting tools, that speculation could call `update_field` with a half-heard value and then be discarded.
 - **Browser input is untrusted.** The handler whitelists field names and caps value length before touching state. Keep that shape when you extend the protocol.
 
 ## Make it yours
 
-- **The form** — edit `FIELDS` in `agent.py` and the matching `<input>` ids in `index.html` (the two lists must stay in sync), and mention the new fields in `build_instructions()`.
-- **What Submit does** — `submit_form` currently logs the record; replace the `logger.info` line with a POST to your booking API or CRM.
-- **More tools** — any `@function_tool` on `FormAgent` becomes something the avatar can *do*: fetch availability before offering dates, look up the visitor by email, navigate the page. Same seam, richer app.
-- **Voice / Avatar** — `CARTESIA_VOICE_ID` ([Cartesia voices](https://play.cartesia.ai/voices)) and `SYNTHESIA_AVATAR_ID` (any avatar your workspace can access), via `.env`.
-- **Models** — swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/); tool calling is provider-independent.
+- **The form**: edit `FIELDS` in `agent.py` and the matching `<input>` ids in `index.html` (the two lists must stay in sync), and mention the new fields in `build_instructions()`.
+- **What Submit does**: `submit_form` currently logs the record; replace the `logger.info` line with a POST to your booking API or CRM.
+- **More tools**: any `@function_tool` on `FormAgent` becomes something the avatar can do, like fetching availability before offering dates, looking up the visitor by email, or navigating the page.
+- **Voice / Avatar**: `CARTESIA_VOICE_ID` ([Cartesia voices](https://play.cartesia.ai/voices)) and `SYNTHESIA_AVATAR_ID` (any avatar your workspace can access), via `.env`.
+- **Models**: swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/); tool calling is provider-independent.
 
-`server.py` mints room tokens with `sync_streams=True` (avatar audio/video sync) and a `RoomAgentDispatch` matching the worker's `agent_name` (dispatch — see Security & production) — keep both when you build your own token endpoint. Keep `SYNTHESIA_API_KEY` server-side: it's a workspace-bound secret that must never reach frontend code.
+`server.py` mints room tokens with `sync_streams=True` (avatar audio/video sync) and a `RoomAgentDispatch` matching the worker's `agent_name` (see Security & production). Keep both when you build your own token endpoint, and keep `SYNTHESIA_API_KEY` server-side: it's a workspace-bound secret that must never reach frontend code.
 
 ## Security & production
 
-> **Demo only — do not deploy as-is.** This is a local quickstart, not a production template.
+> **Demo only.** This is a local quickstart. Don't deploy it as-is.
 
-- **The `/token` endpoint is unauthenticated.** The demo server binds to localhost and mints 15-minute, room-scoped tokens, so exposure is limited to your machine — but anyone who can reach the endpoint can dispatch an agent worker (which costs money), so a production endpoint must sit behind your app's authentication.
-- **Agent dispatch is explicit.** The worker sets `agent_name` and only joins rooms whose token requests it via `RoomAgentDispatch` (`server.py`) — keep the two names in sync. Don't remove `agent_name`: an unnamed worker auto-joins *every* new room in the LiveKit project.
-- **Data-channel messages come from the browser** — treat them as untrusted user input on the agent side (the handler already whitelists fields and caps lengths; keep doing that as you extend it).
-- **Form contents are PII** in a real deployment — the demo logs the submitted record; route it somewhere appropriate before collecting real data.
+- **The `/token` endpoint is unauthenticated.** The demo server binds to localhost and mints 15-minute, room-scoped tokens, so exposure is limited to your machine. But anyone who can reach the endpoint can dispatch an agent worker, which costs money, so a production endpoint must sit behind your app's authentication.
+- **Agent dispatch is explicit.** The worker sets `agent_name` and only joins rooms whose token requests it via `RoomAgentDispatch` (`server.py`), so keep the two names in sync. Don't remove `agent_name`: an unnamed worker auto-joins *every* new room in the LiveKit project.
+- **Data-channel messages come from the browser.** Treat them as untrusted user input on the agent side. The handler already whitelists fields and caps lengths; keep doing that as you extend it.
+- **Form contents are PII** in a real deployment. The demo logs the submitted record; route it somewhere appropriate before collecting real data.
 
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |
 | --- | --- |
-| Avatar talks but the form never fills | Field ids in `index.html` don't match `FIELDS` in `agent.py`, or the topics differ — both sides must use `form`. |
-| The date field stays blank | `<input type="date">` silently ignores anything that isn't `YYYY-MM-DD` — the instructions tell the model this; check what `update_field` received in the agent log. |
-| Typing in the form does nothing | Edits only send on blur (the `change` event) — click out of the field. Also confirm the avatar has joined; the form is disabled until then. |
-| A field updates with a half-heard value mid-sentence | Preemptive generation got re-enabled — it must stay off with side-effecting tools (see `turn_handling`). |
+| Avatar talks but the form never fills | Field ids in `index.html` don't match `FIELDS` in `agent.py`, or the topics differ; both sides must use `form`. |
+| The date field stays blank | `<input type="date">` silently ignores anything that isn't `YYYY-MM-DD`. The instructions tell the model this; check what `update_field` received in the agent log. |
+| Typing in the form does nothing | Edits only send on blur (the `change` event), so click out of the field. Also confirm the avatar has joined; the form is disabled until then. |
+| A field updates with a half-heard value mid-sentence | Preemptive generation got re-enabled. It must stay off with side-effecting tools (see `turn_handling`). |
 | `SynthesiaError` with `type` `AUTH` | API key invalid or expired. |
 | `SynthesiaError` with `type` `FEATURE_NOT_IN_PLAN` | Your Synthesia workspace's plan doesn't include Interactive Avatars. |
 | `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
