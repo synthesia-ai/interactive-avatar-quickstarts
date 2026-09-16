@@ -11,7 +11,7 @@ The form is a stand-in for any state your app shares with the avatar — a booki
 
 ## Prerequisites
 
-- Python **3.10–3.13** (3.13 recommended; the LiveKit plugins require < 3.14)
+- Python **3.10–3.14**
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
 - **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
@@ -102,6 +102,8 @@ Two deliberate choices worth copying:
 | Typing in the form does nothing | Edits only send on blur (the `change` event) — click out of the field. Also confirm the avatar has joined; the form is disabled until then. |
 | A field updates with a half-heard value mid-sentence | Preemptive generation got re-enabled — it must stay off with side-effecting tools (see `turn_handling`). |
 | `SynthesiaError` with `type` `AUTH` | API key invalid or expired. |
+| `SynthesiaError` with `type` `FEATURE_NOT_IN_PLAN` | Your Synthesia workspace's plan doesn't include Interactive Avatars. |
+| `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
 | `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |

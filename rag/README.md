@@ -14,7 +14,7 @@ Honest caveat: this is prompt-based grounding — strong, but statistical, not a
 
 ## Prerequisites
 
-- Python **3.10–3.13** (3.13 recommended; the LiveKit plugins require < 3.14)
+- Python **3.10–3.14**
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
 - **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
@@ -163,6 +163,8 @@ All in `agent.py` (or via `.env`):
 | `[KB] retrieve failed` in the log | AWS creds missing/expired, wrong region, or the role lacks `bedrock:Retrieve` on this KB. |
 | `ExpiredTokenException` / `InvalidSignatureException` | Temporary AWS credentials lapsed — refresh them. |
 | `SynthesiaError` with `type` `AUTH` | Synthesia API key invalid or expired. |
+| `SynthesiaError` with `type` `FEATURE_NOT_IN_PLAN` | Your Synthesia workspace's plan doesn't include Interactive Avatars. |
+| `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
 | `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Synthesia minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |

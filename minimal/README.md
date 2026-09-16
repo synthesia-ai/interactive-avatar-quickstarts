@@ -8,7 +8,7 @@ The smallest useful [Synthesia Interactive Avatar](https://www.synthesia.io/feat
 
 ## Prerequisites
 
-- Python 3.10+
+- Python **3.10–3.14**
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
 - **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
@@ -40,7 +40,7 @@ avatar = synthesia.AvatarSession(synthesia.AvatarConfig(avatar_ids=[AVATAR_ID]))
 await avatar.start(session, room=ctx.room)   # before session.start() — order matters
 ```
 
-The agent produces speech exactly as it always does; the plugin intercepts `session.output.audio` and the avatar lip-syncs it. That means you can swap any STT/LLM/TTS providers in `AgentSession` and the avatar lines never change.
+The agent produces speech exactly as it always does; the plugin intercepts `session.output.audio` and the avatar lip-syncs it. The plugin ships on PyPI as [`livekit-plugins-synthesia`](https://pypi.org/project/livekit-plugins-synthesia/); see the [LiveKit plugin docs](https://docs.livekit.io/agents/models/avatar/plugins/synthesia/) for its full API. That means you can swap any STT/LLM/TTS providers in `AgentSession` and the avatar lines never change.
 
 ## Make it yours
 
@@ -59,6 +59,8 @@ All in `agent.py`:
 | Symptom | Likely cause / fix |
 | --- | --- |
 | `SynthesiaError` with `type` `AUTH` | API key invalid or expired. |
+| `SynthesiaError` with `type` `FEATURE_NOT_IN_PLAN` | Your Synthesia workspace's plan doesn't include Interactive Avatars. |
+| `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
 | `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `AVATAR_ID` isn't available to your workspace. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
 | `SynthesiaError` with `type` `TIMEOUT` | Cold start took too long — retry; the agent already waits 60 s and retries transient errors. |
