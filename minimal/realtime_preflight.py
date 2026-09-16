@@ -46,13 +46,10 @@ Environment:
 
 Requires a session with: a text-only ``RealtimeModel`` (``modalities=["text"]``,
 ``turn_detection=None``), an STT that emits preflight transcripts (Cartesia Ink-2), and
-preemptive generation enabled (the LiveKit default). Written against livekit-agents 1.5.x
+preemptive generation enabled (the LiveKit default). Written against livekit-agents 1.8.x
 private internals -- re-verify on upgrade. This module becomes unnecessary once LiveKit
 supports RealtimeModel preemptive generation natively (see upstream livekit/agents#6537).
 """
-
-# pyright: reportMissingImports=false
-# (this example is a nested uv project; its dependencies live in example/preflight/.venv)
 
 from __future__ import annotations
 
