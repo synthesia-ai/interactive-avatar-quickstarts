@@ -32,7 +32,7 @@ Typical log lines (same cause):
 Cannot connect to host <project>.livekit.cloud:443
 ```
 
-**The browser connects, Python does not.** Same network, same host, same port. A blocked domain or firewall rule would break both. If only Python fails, it is a trust-store problem: the customer's proxy (Zscaler, Netskope, Forcepoint, Palo Alto, and similar) re-signs HTTPS with a corporate root CA. macOS and the browser trust that root; Python validates against its bundled `certifi` list, which does not contain it.
+**The browser connects, Python does not.** Same network, same host, same port. That strongly suggests a runtime trust-store or proxy-configuration problem rather than a general outage or blocked domain. A common cause is a customer's proxy (Zscaler, Netskope, Forcepoint, Palo Alto, and similar) re-signing HTTPS with a corporate root CA. macOS and the browser trust that root; Python normally validates against its bundled `certifi` list, which does not contain it.
 
 Confirm the issuer is the proxy, not a public CA:
 
@@ -44,31 +44,44 @@ Turning the proxy agent "off" often leaves the tunnel or PAC file in place until
 
 These recipes install [`truststore`](https://pypi.org/project/truststore/) and call `truststore.inject_into_ssl()` at the top of `agent.py`, so Python uses the OS verifier (macOS Keychain / Windows cert store) instead of certifi. That picks up the corporate root automatically.
 
-If you still see `CERTIFICATE_VERIFY_FAILED`:
+If you still see `CERTIFICATE_VERIFY_FAILED`, confirm the corporate root is installed and trusted in the OS certificate store. On macOS, `truststore` uses Security.framework and Keychain; it does **not** use `SSL_CERT_FILE`.
 
-1. Unset `SSL_CERT_FILE` (and remove it from `.env`). An explicit env var overrides truststore. Do **not** point `SSL_CERT_FILE` at certifi's own `cacert.pem` — that is the bundle already failing.
-2. Merge the corporate CA into a PEM and export `SSL_CERT_FILE` only if you cannot use truststore. On macOS:
+If OS trust-store access is unavailable, you can instead use a PEM bundle with Python's standard OpenSSL verifier:
+
+1. Comment out the `truststore` import and `truststore.inject_into_ssl()` call in `agent.py`.
+2. Merge the corporate CA and the public roots into one bundle. On macOS:
 
    ```bash
    security find-certificate -a -p /Library/Keychains/System.keychain > /tmp/corp.pem
    security find-certificate -a -p /System/Library/Keychains/SystemRootCertificates.keychain >> /tmp/corp.pem
+   security find-certificate -a -p ~/Library/Keychains/login.keychain-db >> /tmp/corp.pem
    cat .venv/lib/python3.*/site-packages/certifi/cacert.pem >> /tmp/corp.pem
    export SSL_CERT_FILE=/tmp/corp.pem
    ```
 
-   If `openssl crl2pkcs7 -nocrl -certfile /tmp/corp.pem | openssl pkcs7 -print_certs -noout` does not show the vendor name, also dump `~/Library/Keychains/login.keychain-db`.
+3. Verify the corporate CA is present:
+
+   ```bash
+   openssl crl2pkcs7 -nocrl -certfile /tmp/corp.pem \
+     | openssl pkcs7 -print_certs -noout \
+     | grep -Ei 'zscaler|netskope|forcepoint|palo alto'
+   ```
+
+Do **not** point `SSL_CERT_FILE` at certifi's own `cacert.pem` without adding the corporate CA — that is the bundle already failing. OpenSSL also requires a well-formed CA and complete chain; use the OS trust-store path when a corporate certificate fails strict validation with `Basic Constraints of CA cert not marked critical`.
 
 A phone hotspot is not a fix, but it is the fastest way to prove the stack works (it bypasses corporate DNS, PAC, and any residual tunnel).
 
-**Firewall allowlisting** is a separate issue and breaks the browser too. LiveKit Cloud needs:
+**Firewall allowlisting** is separate from certificate trust. LiveKit documents these outbound rules:
 
-| Domain | Protocol | Purpose |
+| Host | Protocol | Purpose |
 | --- | --- | --- |
 | `*.livekit.cloud` | TCP 443 | Signaling (WebSocket) |
 | `*.turn.livekit.cloud` | TCP 443 | TURN over TLS |
 | `*.host.livekit.cloud` | UDP 3478 | TURN over UDP |
+| All hosts *(recommended)* | UDP 50000–60000 | WebRTC media |
+| All hosts *(recommended)* | TCP 7881 | WebRTC media fallback |
 
-With default-deny exact-match firewalls, the TURN hostnames are not covered by `*.livekit.cloud` alone. TLS inspection must be bypassed for those domains, or the corporate root must be trusted by the Python runtime (as above).
+With default-deny exact-match firewalls, the TURN hostnames are not covered by `*.livekit.cloud` alone. For the TCP 443 endpoints, TLS inspection must be bypassed or its corporate root must be trusted by the Python runtime (as above).
 
 ### Other first-run traps
 

@@ -18,7 +18,7 @@ The smallest useful [Synthesia Interactive Avatar](https://www.synthesia.io/feat
 ```bash
 python3 --version      # must be 3.10–3.14
 python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 
 cp .env.example .env   # then fill in the three keys
 
@@ -66,6 +66,6 @@ All in `agent.py`:
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
 | `SynthesiaError` with `type` `TIMEOUT` | Cold start took too long. Retry; the agent already waits 60 s and retries transient errors. |
 | Avatar never appears, no error | You're in `console` mode (`python agent.py console` is a mock room), `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
-| Frontend stuck on **Connected — waiting for the avatar to join**; agent log has `CERTIFICATE_VERIFY_FAILED` or `failed to connect to livekit` | Corporate TLS inspection. Python does not use the OS trust store unless `truststore` is injected (this recipe already does). Unset `SSL_CERT_FILE`. See [Corporate TLS inspection](../README.md#corporate-tls-inspection-certificate_verify_failed). |
+| Frontend stuck on **Connected — waiting for the avatar to join**; agent log has `CERTIFICATE_VERIFY_FAILED` or `failed to connect to livekit` | Corporate TLS inspection. This recipe injects `truststore`, so confirm the corporate root is trusted by the OS. See [Corporate TLS inspection](../README.md#corporate-tls-inspection-certificate_verify_failed). |
 | Confusing pip / dependency errors on a Mac | Venv was created with system Python 3.9. Recreate it with 3.10–3.14. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
