@@ -10,6 +10,18 @@ when you type into the form yourself. Two directions, one data topic:
 Run: python agent.py dev  (`console` mode uses a mock room — no avatar)
 """
 
+import sys
+
+if sys.version_info < (3, 10):
+    raise SystemExit(
+        f"This quickstart needs Python 3.10–3.14; got {sys.version.split()[0]}. "
+        "Recreate the venv with a supported interpreter, e.g. python3.13 -m venv .venv"
+    )
+
+import truststore
+
+truststore.inject_into_ssl()  # OS trust store, not certifi — needed behind TLS-inspecting proxies
+
 import asyncio
 import datetime
 import json

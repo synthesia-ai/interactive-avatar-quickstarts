@@ -2,6 +2,7 @@ livekit-agents[openai,silero]~=1.8
 httpx  # Wikipedia retrieval (default)
 python-dotenv
 livekit-plugins-synthesia~=1.8
+truststore  # OS cert store; required behind TLS-inspecting corporate proxies
 
 # Optional — only for KB_SOURCE=bedrock (the default Wikipedia path does not need it):
 #   pip install boto3

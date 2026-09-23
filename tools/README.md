@@ -11,7 +11,7 @@ The form is a stand-in for any state your app shares with the avatar: a booking,
 
 ## Prerequisites
 
-- Python **3.10–3.14**
+- Python **3.10–3.14** — not macOS `/usr/bin/python3` (still 3.9)
 - **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
 - **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
@@ -19,6 +19,7 @@ The form is a stand-in for any state your app shares with the avatar: a booking,
 ## Run it
 
 ```bash
+python3 --version      # must be 3.10–3.14
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
@@ -106,5 +107,7 @@ Two choices worth copying:
 | `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
 | `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
-| Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
+| Avatar never appears, no error | You're in `console` mode (`python agent.py console` is a mock room), `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
+| Frontend stuck on **Connected — waiting for the avatar to join**; agent log has `CERTIFICATE_VERIFY_FAILED` or `failed to connect to livekit` | Corporate TLS inspection. Python does not use the OS trust store unless `truststore` is injected (this recipe already does). Unset `SSL_CERT_FILE`. See [Corporate TLS inspection](../README.md#corporate-tls-inspection-certificate_verify_failed). |
+| Confusing pip / dependency errors on a Mac | Venv was created with system Python 3.9. Recreate it with 3.10–3.14. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
