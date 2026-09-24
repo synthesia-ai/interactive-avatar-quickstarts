@@ -99,7 +99,8 @@ The worked example is an Aristotle avatar grounded in his own works (Nicomachean
 The Bedrock retriever is already in the code, so switching only needs environment changes:
 
 ```bash
-pip install boto3          # optional dep, only the Bedrock path needs it
+# uncomment boto3 in requirements.txt, then:
+pip install -r requirements.txt
 ```
 ```dotenv
 # in .env

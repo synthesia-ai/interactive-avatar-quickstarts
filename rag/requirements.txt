@@ -3,5 +3,4 @@ httpx  # Wikipedia retrieval (default)
 python-dotenv
 livekit-plugins-synthesia~=1.8
 
-# Optional — only for KB_SOURCE=bedrock (the default Wikipedia path does not need it):
-#   pip install boto3
+# boto3  # uncomment for KB_SOURCE=bedrock
