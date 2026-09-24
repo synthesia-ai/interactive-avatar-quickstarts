@@ -93,6 +93,8 @@ Two choices worth copying:
 - **Data-channel messages come from the browser.** Treat them as untrusted user input on the agent side. The handler already whitelists fields and caps lengths; keep doing that as you extend it.
 - **Form contents are PII** in a real deployment. The demo logs the submitted record; route it somewhere appropriate before collecting real data.
 
+**Deploying:** the `Dockerfile` and `.dockerignore` here are identical to the minimal quickstart's; follow its [Deploy section](../minimal/README.md#deploy) and add this recipe's extra `.env` variables as secrets.
+
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |

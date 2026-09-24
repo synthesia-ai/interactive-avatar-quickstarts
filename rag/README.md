@@ -156,6 +156,8 @@ All in `agent.py` (or via `.env`):
 - **Agent dispatch is explicit.** The worker sets `agent_name` and only joins rooms whose token requests it via `RoomAgentDispatch` (`server.py`), so keep the two names in sync. Don't remove `agent_name`: an unnamed worker auto-joins *every* new room in the LiveKit project.
 - **Keep secrets server-side.** `SYNTHESIA_API_KEY`, `OPENAI_API_KEY`, and AWS credentials live only in `.env` (git-ignored) or your secrets manager, never in the frontend.
 
+**Deploying:** the `Dockerfile` and `.dockerignore` here are identical to the minimal quickstart's; follow its [Deploy section](../minimal/README.md#deploy) and add this recipe's extra `.env` variables as secrets.
+
 ## Troubleshooting
 
 | Symptom | Likely cause / fix |

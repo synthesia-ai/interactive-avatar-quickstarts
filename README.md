@@ -13,3 +13,5 @@ Each recipe is self-contained, with its own README, dependencies, and `.env.exam
 ## Prerequisites
 
 Every recipe needs a **Synthesia API key** for [Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars). Each recipe's README lists everything else it needs: providers, keys, and how to run it.
+
+Every recipe ships the same `Dockerfile`; the minimal quickstart's [Deploy section](minimal/README.md#deploy) covers containers, LiveKit Cloud, and Cloud Run.

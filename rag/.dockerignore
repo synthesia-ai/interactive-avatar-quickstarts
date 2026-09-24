@@ -1,0 +1,12 @@
+# Secrets are injected at run time, never baked into the image.
+.env
+.env.*
+# Demo frontend, not part of the worker.
+server.py
+index.html
+favicon.png
+.venv/
+__pycache__/
+*.pyc
+.git
+README.md
