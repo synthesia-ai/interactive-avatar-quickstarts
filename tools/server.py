@@ -47,8 +47,13 @@ async def index(request: web.Request) -> web.FileResponse:
     )
 
 
+async def favicon(request: web.Request) -> web.FileResponse:
+    return web.FileResponse(Path(__file__).parent / "favicon.png")
+
+
 app = web.Application()
 app.router.add_get("/", index)
+app.router.add_get("/favicon.png", favicon)
 app.router.add_get("/token", token)
 
 if __name__ == "__main__":

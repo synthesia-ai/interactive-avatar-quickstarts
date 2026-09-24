@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <link rel="icon" type="image/png" href="/favicon.png" />
   <title>Synthesia Interactive Avatar — Tools Quickstart</title>
   <style>
     body { margin: 0; background: #111; color: #eee; font-family: system-ui, sans-serif;
            display: flex; flex-direction: column; align-items: center; gap: 1rem; padding: 2rem; }
     video { max-width: min(90vw, 720px); border-radius: 12px; background: #000; }
-    button { font-size: 1rem; padding: 0.6rem 1.6rem; border-radius: 8px; border: 0; cursor: pointer; }
+    button { font-size: 1rem; padding: 0.6rem 1.6rem; border-radius: 8px; border: 0; background: #eee; color: #111; cursor: pointer; }
 
     /* The form the avatar fills in — ids must match FIELDS in agent.py. */
     #form { width: min(90vw, 420px); background: #1c1c1c; padding: 1.2rem; border-radius: 12px; }
@@ -87,6 +88,7 @@
       fields.disabled = true;
       button.textContent = 'Start';
       button.disabled = false;
+      document.getElementById('media').replaceChildren();
       room = null;
     }
 
