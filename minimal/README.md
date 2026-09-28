@@ -33,7 +33,7 @@ Open <http://localhost:8080>, click **Start**, and allow the microphone. You joi
 
 **Quail is disabled by default.** In noisy environments, such as an open office with background conversations, enabling [Quail Voice Focus](https://docs.ai-coustics.com/models/voice-focus/quail-voice-focus) can help isolate your voice, improve transcription, and reduce unwanted interruptions.
 
-This optional setup uses Quail Voice Focus **2.2 L** on the agent worker, before speech detection and transcription. It keeps Silero VAD and requires an ai-coustics SDK key, billed separately from LiveKit.
+This option uses the official `livekit-plugins-ai-coustics` plugin with `QUAIL_VF_L` (Voice Focus **2.2 L**, bundled in version 0.3.2). It runs on the agent worker before the existing Silero VAD and transcription. The plugin includes the models and uses your existing LiveKit Cloud credentials; no separate ai-coustics key or model download is needed. Voice isolation incurs an [additional LiveKit charge](https://docs.livekit.io/transport/media/noise-cancellation/#voice-isolation).
 
 From this recipe's directory, with its virtual environment activated:
 
@@ -43,22 +43,15 @@ From this recipe's directory, with its virtual environment activated:
    pip install -r requirements-quail.txt
    ```
 
-   This uses `ai-coustics-livekit-plugin`. Do not also install `livekit-plugins-ai-coustics`: the two packages share an import path but have different APIs.
-
-2. Get an SDK key from the [ai-coustics developer portal](https://developers.ai-coustics.com), then update `.env`:
+2. Enable it in `.env`:
 
    ```dotenv
    QUAIL_ENABLED=true
-   AIC_SDK_KEY=your-sdk-key
    ```
 
-   Leave `QUAIL_MODEL_PATH` blank to download Quail Voice Focus 2.2 L (about 21 MB) automatically when running `python agent.py dev` or `python agent.py start`. Preparation happens before the worker starts, and the SDK reuses valid model files in this recipe's `models/` directory. It still checks the online manifest at each startup.
+Restart `python agent.py dev`. The agent logs `Quail Voice Focus configured via LiveKit Cloud` when it attaches the processor. If the optional plugin cannot be imported or configured, the agent logs a warning and continues without Quail. The plugin also logs authentication or processing failures and passes audio through.
 
-   To skip both the download and the manifest check, set `QUAIL_MODEL_PATH` to an existing compatible model file. Relative paths resolve from this recipe's directory. Keep the SDK key server-side.
-
-Restart `python agent.py dev`. The worker logs `Quail Voice Focus configured` when it attaches the processor; the plugin logs `Processor: initialized` when microphone processing starts. If configuration, download, model loading, or processor construction fails, the agent logs a warning and continues without Quail. The plugin also logs audio initialization or processing failures and passes audio through.
-
-Set `QUAIL_ENABLED=false` and restart to disable it. The normal install and default run do not need the Quail package, SDK key, or model download.
+Set `QUAIL_ENABLED=false` and restart to disable it. The normal install and default run do not need the Quail package.
 
 ## The integration, in three lines
 

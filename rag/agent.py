@@ -16,7 +16,6 @@ import asyncio
 import json
 import logging
 import os
-import sys
 from pathlib import Path
 
 import httpx  # noqa: E402 — boto3 is imported lazily, only for KB_SOURCE=bedrock
@@ -34,7 +33,6 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, silero, synthesia
 
-from quail import load_quail_model, prepare_quail_model, quail_audio_input
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
@@ -346,9 +344,35 @@ class GroundedAgent(Agent):
             return ""
 
 
+def quail_audio_input() -> room_io.AudioInputOptions:
+    """Enable optional Voice Focus using the room's LiveKit Cloud credentials."""
+    if os.getenv("QUAIL_ENABLED", "false").strip().lower() != "true":
+        return room_io.AudioInputOptions()
+
+    try:
+        # Keep the optional dependency out of the default startup path.
+        from livekit.plugins import ai_coustics
+
+        processor = ai_coustics.audio_enhancement(
+            model=ai_coustics.EnhancerModel.QUAIL_VF_L,
+        )
+    except Exception as exc:  # noqa: BLE001 — optional cleanup must not stop the agent
+        logging.getLogger("quail").warning(
+            "Quail unavailable (%s); install requirements-quail.txt. "
+            "Continuing without Quail.",
+            type(exc).__name__,
+        )
+        return room_io.AudioInputOptions()
+
+    logging.getLogger("quail").info("Quail Voice Focus configured via LiveKit Cloud.")
+    # Match Voice Focus's native 16 kHz / 240-sample processing blocks.
+    return room_io.AudioInputOptions(
+        sample_rate=16000, frame_size_ms=15, noise_cancellation=processor,
+    )
+
+
 def prewarm(proc) -> None:
     proc.userdata["vad"] = silero.VAD.load()
-    proc.userdata["quail_model"] = load_quail_model()
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -410,7 +434,7 @@ async def entrypoint(ctx: JobContext) -> None:
         agent=GroundedAgent(room=ctx.room),
         room=ctx.room,
         room_options=room_io.RoomOptions(
-            audio_input=quail_audio_input(ctx.proc.userdata["quail_model"]),
+            audio_input=quail_audio_input(),
         ),
     )
 
@@ -428,10 +452,6 @@ async def entrypoint(ctx: JobContext) -> None:
 
 
 if __name__ == "__main__":
-    command = sys.argv[1] if len(sys.argv) > 1 else None
-    if command in {"dev", "start"} and "--help" not in sys.argv:
-        prepare_quail_model()
-
     # agent_name makes dispatch explicit: the worker only joins rooms whose token
     # requests it (server.py's RoomAgentDispatch) instead of every room in the project.
     cli.run_app(

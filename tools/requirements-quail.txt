@@ -1,4 +1,4 @@
 -r requirements.txt
 
-# Optional Quail Voice Focus 2.2 integration (billed separately by ai-coustics).
-ai-coustics-livekit-plugin~=0.2.0
+# Official LiveKit plugin; 0.3.2 bundles Quail Voice Focus 2.2 (billed by LiveKit).
+livekit-plugins-ai-coustics~=0.3.2
