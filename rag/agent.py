@@ -29,8 +29,11 @@ from livekit.agents import (
     inference,
     llm,
     metrics,
+    room_io,
 )
 from livekit.plugins import openai, silero, synthesia
+
+from quail import load_quail_model, quail_audio_input
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
@@ -344,6 +347,7 @@ class GroundedAgent(Agent):
 
 def prewarm(proc) -> None:
     proc.userdata["vad"] = silero.VAD.load()
+    proc.userdata["quail_model"] = load_quail_model()
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -401,7 +405,13 @@ async def entrypoint(ctx: JobContext) -> None:
                 raise
             await asyncio.sleep(2 * (attempt + 1))
 
-    await session.start(agent=GroundedAgent(room=ctx.room), room=ctx.room)
+    await session.start(
+        agent=GroundedAgent(room=ctx.room),
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=quail_audio_input(ctx.proc.userdata["quail_model"]),
+        ),
+    )
 
     # No AI disclosure by default — this is a quickstart; how (and whether) to declare
     # the avatar is AI is left to the implementer. Add one here for real deployments,

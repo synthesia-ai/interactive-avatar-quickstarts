@@ -28,8 +28,11 @@ from livekit.agents import (
     function_tool,
     inference,
     metrics,
+    room_io,
 )
 from livekit.plugins import openai, silero, synthesia
+
+from quail import load_quail_model, quail_audio_input
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
@@ -121,6 +124,7 @@ class FormAgent(Agent):
 
 def prewarm(proc) -> None:
     proc.userdata["vad"] = silero.VAD.load()
+    proc.userdata["quail_model"] = load_quail_model()
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -187,7 +191,13 @@ async def entrypoint(ctx: JobContext) -> None:
                 raise
             await asyncio.sleep(2 * (attempt + 1))
 
-    await session.start(agent=agent, room=ctx.room)
+    await session.start(
+        agent=agent,
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=quail_audio_input(ctx.proc.userdata["quail_model"]),
+        ),
+    )
     # After session.start(): the handler calls generate_reply, which needs a running session.
     ctx.room.on("data_received", on_data)
 

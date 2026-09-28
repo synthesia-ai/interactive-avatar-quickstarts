@@ -7,9 +7,19 @@ import asyncio
 from pathlib import Path
 
 from dotenv import load_dotenv
-from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, cli, inference, metrics
+from livekit.agents import (
+    Agent,
+    AgentSession,
+    JobContext,
+    WorkerOptions,
+    cli,
+    inference,
+    metrics,
+    room_io,
+)
 from livekit.plugins import openai, silero, synthesia
 
+from quail import load_quail_model, quail_audio_input
 from realtime_preflight import install_realtime_preflight_support
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
@@ -33,6 +43,7 @@ def prewarm(proc) -> None:
     # LiveKit only does this for cascaded LLMs. Delete once livekit/agents#6537 lands.
     install_realtime_preflight_support()
     proc.userdata["vad"] = silero.VAD.load()
+    proc.userdata["quail_model"] = load_quail_model()
 
 
 async def entrypoint(ctx: JobContext) -> None:
@@ -75,7 +86,13 @@ async def entrypoint(ctx: JobContext) -> None:
             await asyncio.sleep(2 * (attempt + 1))
 
     # Tools disable preflight speculation.
-    await session.start(agent=Agent(instructions=INSTRUCTIONS), room=ctx.room)
+    await session.start(
+        agent=Agent(instructions=INSTRUCTIONS),
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=quail_audio_input(ctx.proc.userdata["quail_model"]),
+        ),
+    )
 
     session.generate_reply(
         instructions="Greet the user in one short sentence and invite them to chat.",

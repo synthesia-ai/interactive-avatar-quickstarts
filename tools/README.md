@@ -36,6 +36,42 @@ Open <http://localhost:8080>, click **Start**, and allow the microphone. Once th
 
 > Don't use `python agent.py console`. It runs a mock room and the avatar will silently never appear. Always test through a real room, like this frontend.
 
+## Optional: Quail Voice Focus
+
+**Quail is disabled by default.** In noisy environments, such as an open office with background conversations, enabling [Quail Voice Focus](https://docs.ai-coustics.com/models/get-started/livekit-quickstart) can help isolate your voice, improve transcription, and reduce unwanted interruptions.
+
+This optional setup uses Quail Voice Focus **2.2 L** on the agent worker, before speech detection and transcription. It keeps Silero VAD and requires an ai-coustics SDK key, billed separately from LiveKit.
+
+From this recipe's directory, with its virtual environment activated:
+
+1. Install the optional dependencies:
+
+   ```bash
+   pip install -r requirements-quail.txt
+   ```
+
+   This uses `ai-coustics-livekit-plugin`. Do not also install `livekit-plugins-ai-coustics`: the two packages share an import path but have different APIs.
+
+2. Download the model once; the command prints the downloaded file's path:
+
+   ```bash
+   python -c 'from livekit.plugins import ai_coustics; print(ai_coustics.Model.download("quail-vf-2.2-l-16khz", "./models"))'
+   ```
+
+3. Get an SDK key from the [ai-coustics developer portal](https://developers.ai-coustics.com), then update `.env`:
+
+   ```dotenv
+   QUAIL_ENABLED=true
+   AIC_SDK_KEY=your-sdk-key
+   QUAIL_MODEL_PATH=path-printed-by-the-download-command
+   ```
+
+   Relative model paths resolve from this recipe's directory. Keep the SDK key server-side.
+
+Restart `python agent.py dev`. The worker logs `Quail Voice Focus configured` when it attaches the processor; the plugin logs `Processor: initialized` when microphone processing starts. If configuration, model loading, or processor construction fails, the agent logs a warning and continues without Quail. The plugin also logs audio initialization or processing failures and passes audio through.
+
+Set `QUAIL_ENABLED=false` and restart to disable it. The normal install and default run do not need the Quail package, SDK key, or model download.
+
 ## How it works
 
 One data topic (`form`), three message shapes, and server-side state as the single source of truth:
