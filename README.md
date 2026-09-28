@@ -16,4 +16,6 @@ Every recipe needs a **Synthesia API key** for [Interactive Avatars](https://www
 
 ## Optional noise reduction
 
-All recipes support **Quail Voice Focus**, disabled by default. Enable it in noisy environments, such as open offices with background conversations, to help isolate your voice, improve transcription, and reduce unwanted interruptions. It requires optional dependencies, an ai-coustics SDK key, and a model download; setup is documented in each recipe: [minimal](minimal/README.md#optional-quail-voice-focus), [RAG](rag/README.md#optional-quail-voice-focus), and [tools](tools/README.md#optional-quail-voice-focus).
+All recipes support **Quail Voice Focus**, disabled by default. Enable it in noisy environments, such as open offices with background conversations, to help isolate your voice, improve transcription, and reduce unwanted interruptions.
+
+Install the optional official LiveKit plugin and set `QUAIL_ENABLED=true`. Models are bundled, and authentication and voice-isolation billing use your existing LiveKit Cloud account. Setup and pricing details are documented in each recipe: [minimal](minimal/README.md#optional-quail-voice-focus), [RAG](rag/README.md#optional-quail-voice-focus), and [tools](tools/README.md#optional-quail-voice-focus).
