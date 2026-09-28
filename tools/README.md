@@ -38,7 +38,7 @@ Open <http://localhost:8080>, click **Start**, and allow the microphone. Once th
 
 ## Optional: Quail Voice Focus
 
-**Quail is disabled by default.** In noisy environments, such as an open office with background conversations, enabling [Quail Voice Focus](https://docs.ai-coustics.com/models/get-started/livekit-quickstart) can help isolate your voice, improve transcription, and reduce unwanted interruptions.
+**Quail is disabled by default.** In noisy environments, such as an open office with background conversations, enabling [Quail Voice Focus](https://docs.ai-coustics.com/models/voice-focus/quail-voice-focus) can help isolate your voice, improve transcription, and reduce unwanted interruptions.
 
 This optional setup uses Quail Voice Focus **2.2 L** on the agent worker, before speech detection and transcription. It keeps Silero VAD and requires an ai-coustics SDK key, billed separately from LiveKit.
 
