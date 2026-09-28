@@ -2,13 +2,15 @@
 
 import importlib.util
 import logging
+import os
+import runpy
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from livekit import plugins, rtc
-from livekit.agents import room_io
+from livekit.agents import cli, room_io
 
 
 @pytest.fixture(params=["minimal", "rag", "tools"])
@@ -59,11 +61,92 @@ def test_default_input_needs_no_quail(quail, monkeypatch, caplog, enabled):
     monkeypatch.delattr(plugins, "ai_coustics", raising=False)
     monkeypatch.setitem(sys.modules, "livekit.plugins.ai_coustics", None)
 
+    quail.prepare_quail_model()
     model = quail.load_quail_model()
 
     assert model is None
     assert quail.quail_audio_input(model) == room_io.AudioInputOptions()
     assert not caplog.records
+
+
+@pytest.mark.parametrize(
+    "license_key, model_path", [("", ""), ("unused-key", "models/pinned.aicmodel")]
+)
+def test_preparation_skips_download_without_key_or_with_explicit_path(
+    quail, monkeypatch, caplog, license_key, model_path
+):
+    monkeypatch.setenv("QUAIL_ENABLED", "true")
+    monkeypatch.setenv("AIC_SDK_KEY", license_key)
+    monkeypatch.setenv("QUAIL_MODEL_PATH", model_path)
+    monkeypatch.delattr(plugins, "ai_coustics", raising=False)
+    monkeypatch.setitem(sys.modules, "livekit.plugins.ai_coustics", None)
+
+    quail.prepare_quail_model()
+
+    assert os.environ["QUAIL_MODEL_PATH"] == model_path
+    assert not caplog.records
+
+
+@pytest.mark.parametrize("arguments", [["dev"], ["start"], ["--help"], ["dev", "--help"]])
+def test_cli_prepares_model_before_starting_workers(
+    quail, sdk, monkeypatch, tmp_path, arguments
+):
+    monkeypatch.setenv("QUAIL_ENABLED", "true")
+    monkeypatch.setenv("AIC_SDK_KEY", "test-sdk-key")
+    monkeypatch.setenv("KB_SOURCE", "wikipedia")
+    recipe_dir = Path(quail.__file__).parent
+    model_path = str(tmp_path / "quail-vf-2.2-l-build.aicmodel")
+    events = []
+
+    def download(model_id, download_dir):
+        assert model_id == "quail-vf-2.2-l-16khz"
+        assert download_dir == recipe_dir / "models"
+        events.append("download")
+        return model_path
+
+    def start_workers(_options):
+        events.append("cli")
+        if "--help" not in arguments:
+            assert quail.load_quail_model().path == model_path
+            # Child workers receive the resolved path through their environment.
+            assert os.environ["QUAIL_MODEL_PATH"] == model_path
+        else:
+            assert "QUAIL_MODEL_PATH" not in os.environ
+
+    monkeypatch.setattr(sdk.Model, "download", download, raising=False)
+    monkeypatch.setattr(cli, "run_app", start_workers)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda **_kwargs: False)
+    monkeypatch.syspath_prepend(str(recipe_dir))
+    monkeypatch.setitem(sys.modules, "quail", quail)
+    monkeypatch.setattr(sys, "argv", [str(recipe_dir / "agent.py"), *arguments])
+
+    runpy.run_path(str(recipe_dir / "agent.py"), run_name="__main__")
+
+    assert events == (["cli"] if "--help" in arguments else ["download", "cli"])
+
+
+@pytest.mark.parametrize("failure", ["download", "plugin"])
+def test_preparation_failure_falls_back_without_logging_credentials(
+    quail, sdk, monkeypatch, caplog, failure
+):
+    monkeypatch.setenv("QUAIL_ENABLED", "true")
+    monkeypatch.setenv("AIC_SDK_KEY", "secret-sdk-key")
+
+    def fail(*_args, **_kwargs):
+        raise RuntimeError("Download error containing secret-sdk-key")
+
+    if failure == "download":
+        monkeypatch.setattr(sdk.Model, "download", fail, raising=False)
+    else:
+        monkeypatch.delattr(plugins, "ai_coustics", raising=False)
+        monkeypatch.setitem(sys.modules, "livekit.plugins.ai_coustics", None)
+
+    quail.prepare_quail_model()
+
+    assert "QUAIL_MODEL_PATH" not in os.environ
+    assert quail.quail_audio_input(quail.load_quail_model()) == room_io.AudioInputOptions()
+    assert "Quail model preparation failed" in caplog.text
+    assert "secret-sdk-key" not in caplog.text
 
 
 def test_requested_without_config_falls_back(quail, monkeypatch, caplog):

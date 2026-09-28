@@ -45,23 +45,18 @@ From this recipe's directory, with its virtual environment activated:
 
    This uses `ai-coustics-livekit-plugin`. Do not also install `livekit-plugins-ai-coustics`: the two packages share an import path but have different APIs.
 
-2. Download the model once; the command prints the downloaded file's path:
-
-   ```bash
-   python -c 'from livekit.plugins import ai_coustics; print(ai_coustics.Model.download("quail-vf-2.2-l-16khz", "./models"))'
-   ```
-
-3. Get an SDK key from the [ai-coustics developer portal](https://developers.ai-coustics.com), then update `.env`:
+2. Get an SDK key from the [ai-coustics developer portal](https://developers.ai-coustics.com), then update `.env`:
 
    ```dotenv
    QUAIL_ENABLED=true
    AIC_SDK_KEY=your-sdk-key
-   QUAIL_MODEL_PATH=path-printed-by-the-download-command
    ```
 
-   Relative model paths resolve from this recipe's directory. Keep the SDK key server-side.
+   Leave `QUAIL_MODEL_PATH` blank to download Quail Voice Focus 2.2 L (about 21 MB) automatically when running `python agent.py dev` or `python agent.py start`. Preparation happens before the worker starts, and the SDK reuses valid model files in this recipe's `models/` directory. It still checks the online manifest at each startup.
 
-Restart `python agent.py dev`. The worker logs `Quail Voice Focus configured` when it attaches the processor; the plugin logs `Processor: initialized` when microphone processing starts. If configuration, model loading, or processor construction fails, the agent logs a warning and continues without Quail. The plugin also logs audio initialization or processing failures and passes audio through.
+   To skip both the download and the manifest check, set `QUAIL_MODEL_PATH` to an existing compatible model file. Relative paths resolve from this recipe's directory. Keep the SDK key server-side.
+
+Restart `python agent.py dev`. The worker logs `Quail Voice Focus configured` when it attaches the processor; the plugin logs `Processor: initialized` when microphone processing starts. If configuration, download, model loading, or processor construction fails, the agent logs a warning and continues without Quail. The plugin also logs audio initialization or processing failures and passes audio through.
 
 Set `QUAIL_ENABLED=false` and restart to disable it. The normal install and default run do not need the Quail package, SDK key, or model download.
 

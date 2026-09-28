@@ -4,6 +4,7 @@ Run: python agent.py dev  (`console` mode uses a mock room — no avatar)
 """
 
 import asyncio
+import sys
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ from livekit.agents import (
 )
 from livekit.plugins import openai, silero, synthesia
 
-from quail import load_quail_model, quail_audio_input
+from quail import load_quail_model, prepare_quail_model, quail_audio_input
 from realtime_preflight import install_realtime_preflight_support
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
@@ -101,6 +102,10 @@ async def entrypoint(ctx: JobContext) -> None:
 
 
 if __name__ == "__main__":
+    command = sys.argv[1] if len(sys.argv) > 1 else None
+    if command in {"dev", "start"} and "--help" not in sys.argv:
+        prepare_quail_model()
+
     # agent_name makes dispatch explicit: the worker only joins rooms whose token
     # requests it (server.py's RoomAgentDispatch) instead of every room in the project.
     cli.run_app(

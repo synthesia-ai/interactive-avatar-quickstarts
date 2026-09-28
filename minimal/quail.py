@@ -15,6 +15,33 @@ if TYPE_CHECKING:
 logger = logging.getLogger("quail")
 
 
+def prepare_quail_model() -> None:
+    """Download before LiveKit starts its worker processes."""
+    if os.getenv("QUAIL_ENABLED", "false").strip().lower() != "true":
+        return
+    if not os.getenv("AIC_SDK_KEY", "").strip():
+        return
+    if os.getenv("QUAIL_MODEL_PATH", "").strip():
+        return
+
+    try:
+        from livekit.plugins import ai_coustics
+
+        # The SDK reuses an existing, valid model file.
+        path = ai_coustics.Model.download(
+            "quail-vf-2.2-l-16khz",
+            Path(__file__).resolve().parent / "models",
+        )
+        # Worker processes inherit this path and load the model locally.
+        os.environ["QUAIL_MODEL_PATH"] = path
+    except Exception as exc:  # noqa: BLE001 — optional setup must not stop the agent
+        logger.warning(
+            "Quail model preparation failed (%s); install requirements-quail.txt "
+            "and check network/cache access. Continuing without Quail.",
+            type(exc).__name__,
+        )
+
+
 def load_quail_model() -> Model | None:
     """Load weights during worker prewarm, only when explicitly enabled."""
     if os.getenv("QUAIL_ENABLED", "false").strip().lower() != "true":
