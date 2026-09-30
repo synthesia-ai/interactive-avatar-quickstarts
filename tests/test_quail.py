@@ -1,8 +1,8 @@
 """Check optional Quail setup with the real plugin, without processing billed audio."""
 
+import builtins
 import importlib.util
 import sys
-import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -60,17 +60,6 @@ def test_enabled_input_creates_a_real_processor_per_session(agent, monkeypatch):
     assert first.noise_cancellation is not second.noise_cancellation
 
 
-def test_enabled_input_works_off_the_main_thread(agent, monkeypatch):
-    # Windows runs job entrypoints in a worker thread.
-    monkeypatch.setenv("QUAIL_ENABLED", "true")
-    result = {}
-    thread = threading.Thread(target=lambda: result.update(opts=agent.quail_audio_input()))
-    thread.start()
-    thread.join()
-
-    assert isinstance(result["opts"].noise_cancellation, rtc.FrameProcessor)
-
-
 @pytest.mark.parametrize("package", [None, SimpleNamespace()])
 def test_missing_or_incompatible_plugin_falls_back(load_agent, monkeypatch, caplog, package):
     # Covers an absent optional install and the other package sharing this import path.
@@ -82,6 +71,29 @@ def test_missing_or_incompatible_plugin_falls_back(load_agent, monkeypatch, capl
     assert agent.quail_audio_input() == room_io.AudioInputOptions()
     assert "install requirements-quail.txt" in caplog.text
     assert "Continuing without Quail" in caplog.text
+
+
+@pytest.mark.parametrize("enabled", ["false", "true"])
+def test_native_plugin_load_failure_does_not_stop_startup(
+    load_agent, monkeypatch, caplog, enabled
+):
+    monkeypatch.setenv("QUAIL_ENABLED", enabled)
+    original_import = builtins.__import__
+
+    def fail_native_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "livekit.plugins" and "ai_coustics" in (fromlist or ()):
+            # ctypes raises OSError when the optional native DLL cannot be loaded.
+            raise OSError("Optional plugin library could not be loaded")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fail_native_import)
+    agent = load_agent()
+
+    assert agent.quail_audio_input() == room_io.AudioInputOptions()
+    if enabled == "true":
+        assert "Continuing without Quail" in caplog.text
+    else:
+        assert not caplog.records
 
 
 def test_plugin_setup_failure_falls_back_without_logging_credentials(

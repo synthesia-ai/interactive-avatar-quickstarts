@@ -36,7 +36,7 @@ from livekit.plugins import openai, silero, synthesia
 # Module-level on purpose: LiveKit plugins must register on the main thread.
 try:
     from livekit.plugins import ai_coustics
-except ImportError:
+except (ImportError, OSError):
     ai_coustics = None
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")

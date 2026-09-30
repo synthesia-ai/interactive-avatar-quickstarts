@@ -26,7 +26,7 @@ from realtime_preflight import install_realtime_preflight_support
 # Module-level on purpose: LiveKit plugins must register on the main thread.
 try:
     from livekit.plugins import ai_coustics
-except ImportError:
+except (ImportError, OSError):
     ai_coustics = None
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
