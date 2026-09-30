@@ -49,7 +49,7 @@ All in `agent.py`:
 - **Personality**: edit `INSTRUCTIONS`.
 - **Voice**: set `CARTESIA_VOICE_ID` to any [Cartesia library voice](https://play.cartesia.ai/voices) (a free account is enough to browse; usage bills via LiveKit Inference).
 - **Custom / cloned voices**: LiveKit Inference only serves Cartesia's public library, so a [voice cloned](https://docs.cartesia.ai/build-with-cartesia/capability-guides/clone-voices) in your own Cartesia account needs the direct plugin instead: get a Cartesia API key, add `CARTESIA_API_KEY=` to `.env`, change `requirements.txt` to `livekit-agents[cartesia,openai,silero]`, and swap the `tts=` line to `cartesia.TTS(model="sonic-3.6", voice=CARTESIA_VOICE_ID)` (adding `cartesia` to the `livekit.plugins` import). TTS then bills to your Cartesia account rather than LiveKit.
-- **Avatar**: set `AVATAR_ID` to any avatar your Synthesia workspace has access to.
+- **Avatar**: set `AVATAR_ID` to the Interactive ID of a synthetic or Personal avatar your workspace can use. In Synthesia Studio, open the avatar's `•••` menu and choose **Copy Interactive ID**. Stock actor-based avatars such as Ryan or Ada can't be used as interactive avatars on any plan.
 - **Models**: swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/). Preflight is a no-op for non-Realtime models.
 
 `server.py` mints room tokens with `sync_streams=True` (keeps the avatar's audio and video in sync in the browser) and a `RoomAgentDispatch` matching the worker's `agent_name`. Dispatch is explicit, so without it the agent never joins, and without `agent_name` the worker would join *every* room in your LiveKit project. Keep both when you build your own token endpoint, and keep `SYNTHESIA_API_KEY` server-side: it's a workspace-bound secret that must never reach frontend code.
@@ -61,7 +61,7 @@ All in `agent.py`:
 | `SynthesiaError` with `type` `AUTH` | API key invalid or expired. |
 | `SynthesiaError` with `type` `FEATURE_NOT_IN_PLAN` | Your Synthesia workspace's plan doesn't include Interactive Avatars. |
 | `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
-| `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `AVATAR_ID` isn't available to your workspace. |
+| `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `AVATAR_ID` isn't a usable Interactive ID: it's a stock actor-based avatar, it hasn't finished converting to an interactive avatar, or it isn't in your plan. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
 | `SynthesiaError` with `type` `TIMEOUT` | Cold start took too long. Retry; the agent already waits 60 s and retries transient errors. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
