@@ -142,7 +142,8 @@ All in `agent.py` (or via `.env`):
 - **Persona**: `PERSONA_NAME` sets the manner (defaults to "Kenji" for Wikipedia, matching the default avatar face, and "Aristotle" for Bedrock); substance always comes from the KB. `build_instructions()` picks the base prompt by source: a generic grounded assistant for Wikipedia, a first-person embodiment for Bedrock.
 - **Retrieved passages**: `RETRIEVAL_TOP_N` controls how many best-first passages are injected. Passages are kept in retrieval rank order (the batched Wikipedia extracts are re-sorted to search rank; Bedrock managed search already returns best-first). For production-grade retrieval, add a reranker (e.g. Cohere Rerank or a cross-encoder) between retrieve and inject.
 - **Query rewriting (Wikipedia path)**: spoken questions are rewritten into a clean search query by a small model (`QUERY_REWRITE_MODEL`, default `gpt-4o-mini`) before hitting Wikipedia's keyword search, so *"tell me about Latvia"* searches `Latvia` rather than the song *"Santa Tell Me"*. A heuristic cleaner (`clean_query`) is the fallback. Bedrock's semantic search doesn't need this.
-- **Voice / Avatar**: `CARTESIA_VOICE_ID` ([Cartesia voices](https://play.cartesia.ai/voices)) and `SYNTHESIA_AVATAR_ID` (any avatar your workspace can access).
+- **Voice**: `CARTESIA_VOICE_ID` ([Cartesia voices](https://play.cartesia.ai/voices)).
+- **Avatar**: `SYNTHESIA_AVATAR_ID` must be the Interactive ID of a synthetic or Personal avatar your workspace can use. In Synthesia Studio, open the avatar's `•••` menu and choose **Copy Interactive ID**. Stock actor-based avatars such as Ryan or Ada can't be used as interactive avatars on any plan.
 - **Models**: swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/); the RAG hook is provider-independent.
 
 `server.py` mints room tokens with `sync_streams=True` (avatar audio/video sync) and a `RoomAgentDispatch` matching the worker's `agent_name` (see Security & production). Keep both when you build your own token endpoint, and keep `SYNTHESIA_API_KEY` and your AWS credentials server-side. They must never reach frontend code.
@@ -165,7 +166,7 @@ All in `agent.py` (or via `.env`):
 | `SynthesiaError` with `type` `AUTH` | Synthesia API key invalid or expired. |
 | `SynthesiaError` with `type` `FEATURE_NOT_IN_PLAN` | Your Synthesia workspace's plan doesn't include Interactive Avatars. |
 | `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
-| `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't available to your workspace. |
+| `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't a usable Interactive ID: it's a stock actor-based avatar, it hasn't finished converting to an interactive avatar, or it isn't in your plan. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Synthesia minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
