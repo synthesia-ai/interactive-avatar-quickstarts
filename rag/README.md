@@ -144,6 +144,7 @@ All in `agent.py` (or via `.env`):
 - **Query rewriting (Wikipedia path)**: spoken questions are rewritten into a clean search query by a small model (`QUERY_REWRITE_MODEL`, default `gpt-4o-mini`) before hitting Wikipedia's keyword search, so *"tell me about Latvia"* searches `Latvia` rather than the song *"Santa Tell Me"*. A heuristic cleaner (`clean_query`) is the fallback. Bedrock's semantic search doesn't need this.
 - **Voice / Avatar**: `CARTESIA_VOICE_ID` ([Cartesia voices](https://play.cartesia.ai/voices)) and `SYNTHESIA_AVATAR_ID` (any avatar your workspace can access).
 - **Models**: swap the `stt=` / `llm=` / `tts=` lines for any [LiveKit-supported provider](https://docs.livekit.io/agents/models/); the RAG hook is provider-independent.
+- **Noisy environment**: install `livekit-plugins-ai-coustics` and pass its `audio_enhancement()` processor as `noise_cancellation` in the room options for `session.start()` ([LiveKit docs](https://docs.livekit.io/transport/media/noise-cancellation/)). It cleans the microphone before VAD and STT with a model bundled in the wheel; the default noise suppression is included with LiveKit Cloud, and the Voice Focus models for background conversations bill as voice isolation.
 
 `server.py` mints room tokens with `sync_streams=True` (avatar audio/video sync) and a `RoomAgentDispatch` matching the worker's `agent_name` (see Security & production). Keep both when you build your own token endpoint, and keep `SYNTHESIA_API_KEY` and your AWS credentials server-side. They must never reach frontend code.
 
