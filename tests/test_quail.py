@@ -2,6 +2,7 @@
 
 import importlib.util
 import sys
+import threading
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,24 +12,35 @@ from livekit.agents import room_io
 
 
 @pytest.fixture(params=["minimal", "rag", "tools"])
-def agent(request, monkeypatch):
+def load_agent(request, monkeypatch):
+    """Import a recipe's agent.py; call it after patching the optional plugin's availability."""
     monkeypatch.delenv("QUAIL_ENABLED", raising=False)
     monkeypatch.setenv("KB_SOURCE", "wikipedia")
     monkeypatch.setattr("dotenv.load_dotenv", lambda **_kwargs: False)
     path = Path(__file__).parents[1] / request.param / "agent.py"
     monkeypatch.syspath_prepend(str(path.parent))
-    spec = importlib.util.spec_from_file_location(f"{request.param}_agent", path)
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+
+    def _load():
+        spec = importlib.util.spec_from_file_location(f"{request.param}_agent", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    return _load
+
+
+@pytest.fixture
+def agent(load_agent):
+    return load_agent()
 
 
 @pytest.mark.parametrize("enabled", [None, "false"])
-def test_default_input_needs_no_quail(agent, monkeypatch, caplog, enabled):
+def test_default_input_needs_no_quail(load_agent, monkeypatch, caplog, enabled):
     if enabled is not None:
         monkeypatch.setenv("QUAIL_ENABLED", enabled)
     monkeypatch.delattr(plugins, "ai_coustics", raising=False)
     monkeypatch.setitem(sys.modules, "livekit.plugins.ai_coustics", None)
+    agent = load_agent()
 
     assert agent.quail_audio_input() == room_io.AudioInputOptions()
     assert not caplog.records
@@ -48,12 +60,24 @@ def test_enabled_input_creates_a_real_processor_per_session(agent, monkeypatch):
     assert first.noise_cancellation is not second.noise_cancellation
 
 
+def test_enabled_input_works_off_the_main_thread(agent, monkeypatch):
+    # Windows runs job entrypoints in a worker thread.
+    monkeypatch.setenv("QUAIL_ENABLED", "true")
+    result = {}
+    thread = threading.Thread(target=lambda: result.update(opts=agent.quail_audio_input()))
+    thread.start()
+    thread.join()
+
+    assert isinstance(result["opts"].noise_cancellation, rtc.FrameProcessor)
+
+
 @pytest.mark.parametrize("package", [None, SimpleNamespace()])
-def test_missing_or_incompatible_plugin_falls_back(agent, monkeypatch, caplog, package):
+def test_missing_or_incompatible_plugin_falls_back(load_agent, monkeypatch, caplog, package):
     # Covers an absent optional install and the other package sharing this import path.
     monkeypatch.setenv("QUAIL_ENABLED", "true")
     monkeypatch.delattr(plugins, "ai_coustics", raising=False)
     monkeypatch.setitem(sys.modules, "livekit.plugins.ai_coustics", package)
+    agent = load_agent()
 
     assert agent.quail_audio_input() == room_io.AudioInputOptions()
     assert "install requirements-quail.txt" in caplog.text

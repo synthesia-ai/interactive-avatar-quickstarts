@@ -23,6 +23,12 @@ from livekit.plugins import openai, silero, synthesia
 
 from realtime_preflight import install_realtime_preflight_support
 
+# Module-level on purpose: LiveKit plugins must register on the main thread.
+try:
+    from livekit.plugins import ai_coustics
+except ImportError:
+    ai_coustics = None
+
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
 AVATAR_ID = "8788bef1-8020-46e0-a8f4-510ea9989b25"  # Jenny
@@ -44,10 +50,13 @@ def quail_audio_input() -> room_io.AudioInputOptions:
     if os.getenv("QUAIL_ENABLED", "false").strip().lower() != "true":
         return room_io.AudioInputOptions()
 
-    try:
-        # Keep the optional dependency out of the default startup path.
-        from livekit.plugins import ai_coustics
+    if ai_coustics is None:
+        logging.getLogger("quail").warning(
+            "Quail unavailable; install requirements-quail.txt. Continuing without Quail."
+        )
+        return room_io.AudioInputOptions()
 
+    try:
         processor = ai_coustics.audio_enhancement(
             model=ai_coustics.EnhancerModel.QUAIL_VF_L,
         )
