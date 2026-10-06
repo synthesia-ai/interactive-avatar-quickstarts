@@ -21,7 +21,13 @@ Safety properties:
 * Every wrapped method is guarded: any unexpected error abandons speculation and falls back to
   LiveKit's original behaviour rather than breaking the session.
 * The realtime socket allows a single active response, so we never speculate while one is in
-  flight and always wait for a cancelled response to clear before regenerating.
+  flight and always wait for a cancelled response to clear before regenerating. A final
+  transcript that arrives before the speculative ``response.create`` is sent waits for that
+  create, bounded by the adoption timeout. Regenerating without cancelling the preflight task
+  lets the task's later ``response.create`` collide with the fallback; OpenAI rejects the
+  fallback with ``conversation_already_has_active_response`` and LiveKit does not retry, so
+  the turn goes silent. Abandoning speculation cancels that task first, and a rejected
+  fallback is retried once after the active response clears.
 * LiveKit mirrors server-acked conversation items into the local history
   (``_on_remote_item_added``); the speculation's items are held back from that mirror until the
   turn resolves (replayed on adoption, dropped on rollback) so adopted turns don't record a
@@ -331,6 +337,8 @@ async def _run_preflight(session: _PreflightSession, spec_ctx: Any) -> None:
     """
     try:
         await session.rt_session.update_chat_ctx(spec_ctx)
+        # Cancellation is delivered at await points. Keeping response.create in this task,
+        # with no await before it, means a task cancelled during update_chat_ctx never sends one.
         session.extra["gen_fut"] = session.rt_session.generate_reply(tool_choice="none")
     except asyncio.CancelledError:
         raise
@@ -409,18 +417,182 @@ def _release_mirror_hold(activity: Any, *, replay: bool) -> None:
             logger.debug("preflight: replaying held remote item failed", exc_info=True)
 
 
+def _current_task_is_being_cancelled() -> bool:
+    """True when the running task has been cancelled, including on Python 3.10.
+
+    ``Task.cancelling()`` (3.11+) is the supported check. 3.10 only sets the private
+    ``_must_cancel`` flag before injecting ``CancelledError``, and a shielded child task
+    being cancelled raises the same exception in the caller without that flag.
+    """
+    current = asyncio.current_task()
+    if current is None:
+        return False
+    cancelling = getattr(current, "cancelling", None)
+    if callable(cancelling):
+        return bool(cancelling())
+    return bool(getattr(current, "_must_cancel", False))
+
+
+def _retrieve_task_outcome(task: asyncio.Task) -> None:
+    if not task.done():
+        return
+    try:
+        task.result()
+    except (asyncio.CancelledError, Exception):
+        pass
+
+
 async def _await_task(task: asyncio.Task | None) -> None:
+    """Wait for ``task`` to finish without treating *its* cancellation as the caller's.
+
+    Awaiting a shielded task re-raises the task's ``CancelledError`` into the caller
+    (``CancelledError`` is a ``BaseException``, so ``except Exception`` does not catch it).
+    Rollback and regenerate run after this wait; letting that exception propagate skips
+    both and drops the turn.
+    """
     if task is None:
         return
-    if not task.done():
-        try:
-            await asyncio.wait_for(asyncio.shield(task), timeout=2.0)
-        except Exception:
+    if task.done():
+        _retrieve_task_outcome(task)
+        return
+    try:
+        await asyncio.wait_for(asyncio.shield(task), timeout=2.0)
+    except asyncio.CancelledError:
+        if _current_task_is_being_cancelled():
+            raise
+    except Exception:
+        if not task.done():
             task.cancel()
+        try:
+            await task
+        except (asyncio.CancelledError, Exception):
+            pass
+    _retrieve_task_outcome(task)
+
+
+async def _cancel_preflight_task(session: _PreflightSession) -> None:
+    """Cancel speculation so it cannot send a response.create after we have given up on it."""
+    task = session.task
+    if task is None or task.done():
+        return
+    task.cancel()
+    await _await_task(task)
+
+
+_ACTIVE_RESPONSE_CODE = "conversation_already_has_active_response"
+
+
+def _is_active_response_error(exc: BaseException | None) -> bool:
+    if exc is None:
+        return False
+    if getattr(exc, "code", None) == _ACTIVE_RESPONSE_CODE:
+        return True
+    return _ACTIVE_RESPONSE_CODE in str(exc)
+
+
+async def _await_speculative_generation(session: _PreflightSession, timeout_s: float) -> Any | None:
+    """Wait until the speculative response exists, including the update_chat_ctx that precedes it.
+
+    ``gen_fut`` is published only after that round trip. A final transcript that arrives during
+    it must wait for the future; treating a missing future as "unavailable" and regenerating
+    races the task's own later response.create.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return None
+    deadline = loop.time() + timeout_s
+
+    gen_fut = session.extra.get("gen_fut")
+    task = session.task
+    if gen_fut is None and task is not None and not task.done():
+        remaining = deadline - loop.time()
+        if remaining > 0:
             try:
-                await task
-            except (asyncio.CancelledError, Exception):
+                await asyncio.wait_for(asyncio.shield(task), timeout=remaining)
+            except asyncio.TimeoutError:
                 pass
+            except asyncio.CancelledError:
+                if _current_task_is_being_cancelled():
+                    raise
+            except Exception:
+                logger.debug("preflight: speculative task failed before response.create", exc_info=True)
+        gen_fut = session.extra.get("gen_fut")
+
+    if gen_fut is None:
+        return None
+    if gen_fut.done():
+        try:
+            return gen_fut.result()
+        except asyncio.CancelledError:
+            if _current_task_is_being_cancelled():
+                raise
+            logger.debug("preflight: speculative generation was cancelled", exc_info=True)
+            return None
+        except Exception:
+            logger.debug("preflight: speculative generation failed", exc_info=True)
+            return None
+    remaining = deadline - loop.time()
+    if remaining <= 0:
+        return None
+    try:
+        return await asyncio.wait_for(asyncio.shield(gen_fut), timeout=remaining)
+    except asyncio.CancelledError:
+        if _current_task_is_being_cancelled():
+            raise
+        logger.debug("preflight: speculative generation was cancelled", exc_info=True)
+        return None
+    except Exception:
+        logger.debug("preflight: speculative generation not ready in time", exc_info=True)
+        return None
+
+
+async def _reply_rejected_for_active_response(handle: Any, timeout_s: float) -> bool:
+    """True when ``handle`` fails with ``conversation_already_has_active_response`` within ``timeout_s``.
+
+    A reply that is still running has been accepted: OpenAI rejects ``response.create`` before
+    any audio is produced, so a handle that stays open past the timeout is not this failure.
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return False
+    deadline = loop.time() + timeout_s
+    while not handle.done():
+        if loop.time() >= deadline:
+            return False
+        await asyncio.sleep(0.01)
+    try:
+        exc = handle.exception()
+    except Exception:
+        logger.debug("preflight: could not read reply failure", exc_info=True)
+        return False
+    return _is_active_response_error(exc)
+
+
+async def _regenerate_after_abandoned_preflight(
+    rt_session: Any,
+    start_reply: Callable[[bool], Any],
+    *,
+    rejection_timeout_s: float = 2.0,
+    settle_timeout_s: float = 1.5,
+) -> None:
+    """Start a fresh reply, and retry once if the socket still has an active response.
+
+    ``start_reply`` is called with ``False`` on the first attempt and ``True`` on the retry.
+    The first attempt has already committed the user message by the time OpenAI rejects
+    ``response.create``, so the retry must not commit it again.
+    """
+    handle = start_reply(False)
+    if not await _reply_rejected_for_active_response(handle, rejection_timeout_s):
+        return
+    logger.info("Realtime preflight: reply rejected because a response was still active; retrying once")
+    try:
+        rt_session.interrupt()
+    except Exception:
+        logger.debug("preflight retry: rt_session.interrupt() failed", exc_info=True)
+    await _await_realtime_response_cleared(rt_session, settle_timeout_s)
+    start_reply(True)
 
 
 def _clear_session(activity: Any) -> _PreflightSession | None:
@@ -516,10 +688,14 @@ def install_realtime_preflight_support() -> None:
         an edited chat context invalidates it, and a fresh reply is generated from the post-hook
         state without re-running the hook). Only then is the in-flight speculative generation
         handed to ``_realtime_generation_task`` (TTS + playout + interruption). If the speculative
-        response never materialises we regenerate, so we never go silent.
+        response never materialises we cancel the preflight task and regenerate, retrying once
+        when the socket still has an active response, so we never go silent.
         """
 
         async def _undo_speculation() -> None:
+            # Cancel before interrupt. Otherwise a task still inside update_chat_ctx sends
+            # response.create after interrupt() has already observed no active generation.
+            await _cancel_preflight_task(session)
             await rollback_preflight(
                 session.controller,
                 rt_session=session.rt_session,
@@ -573,6 +749,15 @@ def install_realtime_preflight_support() -> None:
                 except Exception:
                     logger.debug("preflight adopt: recording hook delay failed", exc_info=True)
 
+            def _start_fresh_reply(is_retry: bool) -> Any:
+                # The first attempt commits the user message before response.create. A retry
+                # after conversation_already_has_active_response must not commit it again.
+                return self._generate_reply(
+                    user_message=None if is_retry else user_message,
+                    chat_ctx=temp_mutable_chat_ctx,
+                    input_details=InputDetails(modality="audio"),
+                )
+
             if turn_ignored:
                 await _undo_speculation()
                 logger.info(
@@ -603,22 +788,12 @@ def install_realtime_preflight_support() -> None:
                     },
                 )
                 await _undo_speculation()
-                self._generate_reply(
-                    user_message=user_message,
-                    chat_ctx=temp_mutable_chat_ctx,
-                    input_details=InputDetails(modality="audio"),
-                )
+                await _regenerate_after_abandoned_preflight(session.rt_session, _start_fresh_reply)
                 return
 
-            # -- adopt: wait (briefly) for the speculative generation to be created, then hand it
-            # to LiveKit's native realtime pipeline --
-            gen_fut = session.extra.get("gen_fut")
-            generation_ev = None
-            if gen_fut is not None:
-                try:
-                    generation_ev = await asyncio.wait_for(asyncio.shield(gen_fut), timeout=timeout_s)
-                except Exception:
-                    logger.debug("preflight: speculative generation not ready in time", exc_info=True)
+            # -- adopt: wait for the speculative generation, including a response.create that
+            # has not been sent yet because update_chat_ctx is still in flight --
+            generation_ev = await _await_speculative_generation(session, timeout_s)
 
             if generation_ev is not None:
                 # Commit the user turn to history, then drive the native generation.
@@ -670,9 +845,7 @@ def install_realtime_preflight_support() -> None:
                 },
             )
             await _undo_speculation()
-            self._generate_reply(
-                user_message=user_message, chat_ctx=temp_mutable_chat_ctx, input_details=InputDetails(modality="audio")
-            )
+            await _regenerate_after_abandoned_preflight(session.rt_session, _start_fresh_reply)
 
         self._create_speech_task(_do_finalize(), name="realtime_preflight_finalize")
 
@@ -681,9 +854,7 @@ def install_realtime_preflight_support() -> None:
             return
 
         async def _do_rollback() -> None:
-            if session.task is not None and not session.task.done():
-                session.task.cancel()
-                await _await_task(session.task)
+            await _cancel_preflight_task(session)
             await rollback_preflight(
                 session.controller,
                 rt_session=session.rt_session,
@@ -702,9 +873,7 @@ def install_realtime_preflight_support() -> None:
             return
 
         async def _do_rollback_then_fallback() -> None:
-            if session.task is not None and not session.task.done():
-                session.task.cancel()
-                await _await_task(session.task)
+            await _cancel_preflight_task(session)
             await rollback_preflight(
                 session.controller,
                 rt_session=session.rt_session,
