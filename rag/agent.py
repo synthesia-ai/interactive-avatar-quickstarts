@@ -29,8 +29,15 @@ from livekit.agents import (
     inference,
     llm,
     metrics,
+    room_io,
 )
 from livekit.plugins import openai, silero, synthesia
+
+# Module-level on purpose: LiveKit plugins must register on the main thread.
+try:
+    from livekit.plugins import ai_coustics
+except (ImportError, OSError):
+    ai_coustics = None
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
@@ -342,6 +349,36 @@ class GroundedAgent(Agent):
             return ""
 
 
+def quail_audio_input() -> room_io.AudioInputOptions:
+    """Enable optional Voice Focus using the room's LiveKit Cloud credentials."""
+    if os.getenv("QUAIL_ENABLED", "false").strip().lower() != "true":
+        return room_io.AudioInputOptions()
+
+    if ai_coustics is None:
+        logging.getLogger("quail").warning(
+            "Quail unavailable; install requirements-quail.txt. Continuing without Quail."
+        )
+        return room_io.AudioInputOptions()
+
+    try:
+        processor = ai_coustics.audio_enhancement(
+            model=ai_coustics.EnhancerModel.QUAIL_VF_L,
+        )
+    except Exception as exc:  # noqa: BLE001 — optional cleanup must not stop the agent
+        logging.getLogger("quail").warning(
+            "Quail unavailable (%s); install requirements-quail.txt. "
+            "Continuing without Quail.",
+            type(exc).__name__,
+        )
+        return room_io.AudioInputOptions()
+
+    logging.getLogger("quail").info("Quail Voice Focus configured via LiveKit Cloud.")
+    # Match Voice Focus's native 16 kHz / 240-sample processing blocks.
+    return room_io.AudioInputOptions(
+        sample_rate=16000, frame_size_ms=15, noise_cancellation=processor,
+    )
+
+
 def prewarm(proc) -> None:
     proc.userdata["vad"] = silero.VAD.load()
 
@@ -401,7 +438,13 @@ async def entrypoint(ctx: JobContext) -> None:
                 raise
             await asyncio.sleep(2 * (attempt + 1))
 
-    await session.start(agent=GroundedAgent(room=ctx.room), room=ctx.room)
+    await session.start(
+        agent=GroundedAgent(room=ctx.room),
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=quail_audio_input(),
+        ),
+    )
 
     # No AI disclosure by default — this is a quickstart; how (and whether) to declare
     # the avatar is AI is left to the implementer. Add one here for real deployments,

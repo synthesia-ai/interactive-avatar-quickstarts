@@ -35,6 +35,8 @@
     async function start() {
       button.disabled = true;
       status.textContent = 'Connecting…';
+      let avatarJoined = false;
+      let avatarWaitTimer;
       try {
         const { url, token } = await (await fetch('/token')).json();
         room = new Room();
@@ -48,15 +50,27 @@
           }
           track.attach(media);
           if (track.kind === 'video') {
+            avatarJoined = true;
+            clearTimeout(avatarWaitTimer);
             status.textContent = 'Connected — say hello!';
             button.textContent = 'Stop';   // Start becomes Stop once the avatar is live
             button.disabled = false;
           }
         });
-        room.on(RoomEvent.Disconnected, () => resetUI('Disconnected — click Start to talk again.'));
+        room.on(RoomEvent.Disconnected, () => {
+          clearTimeout(avatarWaitTimer);
+          resetUI('Disconnected — click Start to talk again.');
+        });
         await room.connect(url, token);
         await room.localParticipant.setMicrophoneEnabled(true);
-        status.textContent = 'Connected — waiting for the avatar to join';
+        if (!avatarJoined) {
+          status.textContent = 'Connected — waiting for the avatar to join';
+          avatarWaitTimer = setTimeout(() => {
+            status.textContent = 'Still waiting for the avatar — check the agent terminal, or Troubleshooting in the README.';
+            button.textContent = 'Stop';   // let the user disconnect and retry
+            button.disabled = false;
+          }, 30000);
+        }
       } catch (err) {
         resetUI('Failed to connect: ' + err.message);
       }
