@@ -63,14 +63,15 @@
         });
         await room.connect(url, token);
         await room.localParticipant.setMicrophoneEnabled(true);
-        status.textContent = 'Connected — waiting for the avatar to join';
         if (!avatarJoined) {
+          status.textContent = 'Connected — waiting for the avatar to join';
           avatarWaitTimer = setTimeout(() => {
-            status.textContent = 'Still waiting for the avatar — check the agent terminal for connection errors.';
+            status.textContent = 'Still waiting for the avatar — check the agent terminal, or Troubleshooting in the README.';
+            button.textContent = 'Stop';   // let the user disconnect and retry
+            button.disabled = false;
           }, 30000);
         }
       } catch (err) {
-        clearTimeout(avatarWaitTimer);
         resetUI('Failed to connect: ' + err.message);
       }
     }
