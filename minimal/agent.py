@@ -4,13 +4,30 @@ Run: python agent.py dev  (`console` mode uses a mock room — no avatar)
 """
 
 import asyncio
+import logging
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, cli, inference, metrics
+from livekit.agents import (
+    Agent,
+    AgentSession,
+    JobContext,
+    WorkerOptions,
+    cli,
+    inference,
+    metrics,
+    room_io,
+)
 from livekit.plugins import openai, silero, synthesia
 
 from realtime_preflight import install_realtime_preflight_support
+
+# Module-level on purpose: LiveKit plugins must register on the main thread.
+try:
+    from livekit.plugins import ai_coustics
+except (ImportError, OSError):
+    ai_coustics = None
 
 load_dotenv(dotenv_path=Path(__file__).parent / ".env")
 
@@ -26,6 +43,36 @@ to three short sentences, and never use bullet points or markdown or read
 out URLs. If asked what you are, explain that you are a LiveKit voice agent
 with a Synthesia interactive avatar, and that your creator can make you say
 anything by editing one prompt in agent.py."""
+
+
+def quail_audio_input() -> room_io.AudioInputOptions:
+    """Enable optional Voice Focus using the room's LiveKit Cloud credentials."""
+    if os.getenv("QUAIL_ENABLED", "false").strip().lower() != "true":
+        return room_io.AudioInputOptions()
+
+    if ai_coustics is None:
+        logging.getLogger("quail").warning(
+            "Quail unavailable; install requirements-quail.txt. Continuing without Quail."
+        )
+        return room_io.AudioInputOptions()
+
+    try:
+        processor = ai_coustics.audio_enhancement(
+            model=ai_coustics.EnhancerModel.QUAIL_VF_L,
+        )
+    except Exception as exc:  # noqa: BLE001 — optional cleanup must not stop the agent
+        logging.getLogger("quail").warning(
+            "Quail unavailable (%s); install requirements-quail.txt. "
+            "Continuing without Quail.",
+            type(exc).__name__,
+        )
+        return room_io.AudioInputOptions()
+
+    logging.getLogger("quail").info("Quail Voice Focus configured via LiveKit Cloud.")
+    # Match Voice Focus's native 16 kHz / 240-sample processing blocks.
+    return room_io.AudioInputOptions(
+        sample_rate=16000, frame_size_ms=15, noise_cancellation=processor,
+    )
 
 
 def prewarm(proc) -> None:
@@ -75,7 +122,13 @@ async def entrypoint(ctx: JobContext) -> None:
             await asyncio.sleep(2 * (attempt + 1))
 
     # Tools disable preflight speculation.
-    await session.start(agent=Agent(instructions=INSTRUCTIONS), room=ctx.room)
+    await session.start(
+        agent=Agent(instructions=INSTRUCTIONS),
+        room=ctx.room,
+        room_options=room_io.RoomOptions(
+            audio_input=quail_audio_input(),
+        ),
+    )
 
     session.generate_reply(
         instructions="Greet the user in one short sentence and invite them to chat.",

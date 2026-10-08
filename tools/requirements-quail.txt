@@ -1,0 +1,4 @@
+-r requirements.txt
+
+# Official LiveKit plugin; 0.3.2 bundles Quail Voice Focus 2.2 (billed by LiveKit).
+livekit-plugins-ai-coustics~=0.3.2

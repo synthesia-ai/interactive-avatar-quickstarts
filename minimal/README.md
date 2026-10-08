@@ -29,6 +29,30 @@ Open <http://localhost:8080>, click **Start**, and allow the microphone. You joi
 
 > Don't use `python agent.py console`. It runs a mock room and the avatar will silently never appear. Always test through a real room, like this frontend.
 
+## Optional: Quail Voice Focus
+
+**Quail is disabled by default.** In noisy environments, such as an open office with background conversations, enabling [Quail Voice Focus](https://docs.ai-coustics.com/models/voice-focus/quail-voice-focus) can help isolate your voice, improve transcription, and reduce unwanted interruptions.
+
+This option uses the official `livekit-plugins-ai-coustics` plugin with `QUAIL_VF_L` (Voice Focus **2.2 L**, bundled in version 0.3.2). It runs on the agent worker before the existing Silero VAD and transcription. The plugin includes the models and uses your existing LiveKit Cloud credentials; no separate ai-coustics key or model download is needed. Voice isolation incurs an [additional LiveKit charge](https://docs.livekit.io/transport/media/noise-cancellation/#voice-isolation).
+
+From this recipe's directory, with its virtual environment activated:
+
+1. Install the optional dependencies:
+
+   ```bash
+   pip install -r requirements-quail.txt
+   ```
+
+2. Enable it in `.env`:
+
+   ```dotenv
+   QUAIL_ENABLED=true
+   ```
+
+Restart `python agent.py dev`. The agent logs `Quail Voice Focus configured via LiveKit Cloud` when it attaches the processor. If the optional plugin cannot be imported or configured, the agent logs a warning and continues without Quail. The plugin also logs authentication or processing failures and passes audio through.
+
+Set `QUAIL_ENABLED=false` and restart to disable it. The normal install and default run do not need the Quail package.
+
 ## The integration, in three lines
 
 Everything avatar-specific in `agent.py` is:
