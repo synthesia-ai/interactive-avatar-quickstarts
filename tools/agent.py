@@ -10,6 +10,13 @@ when you type into the form yourself. Two directions, one data topic:
 Run: python agent.py dev  (`console` mode uses a mock room — no avatar)
 """
 
+import truststore
+
+# Verify TLS against the OS trust store (Keychain / Windows cert store) instead of
+# certifi, so corporate TLS-inspection roots are honoured. Must run before anything
+# imports ssl.
+truststore.inject_into_ssl()
+
 import asyncio
 import datetime
 import json

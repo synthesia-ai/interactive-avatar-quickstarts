@@ -12,13 +12,20 @@ Two retrieval sources, selected by KB_SOURCE:
 Run: python agent.py dev  (`console` mode uses a mock room — no avatar)
 """
 
+import truststore
+
+# Verify TLS against the OS trust store (Keychain / Windows cert store) instead of
+# certifi, so corporate TLS-inspection roots are honoured. Must run before anything
+# imports ssl.
+truststore.inject_into_ssl()
+
 import asyncio
 import json
 import logging
 import os
 from pathlib import Path
 
-import httpx  # noqa: E402 — boto3 is imported lazily, only for KB_SOURCE=bedrock
+import httpx  # Wikipedia path; boto3 is imported lazily, only for KB_SOURCE=bedrock
 from dotenv import load_dotenv
 from livekit.agents import (
     Agent,

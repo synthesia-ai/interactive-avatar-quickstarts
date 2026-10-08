@@ -108,4 +108,5 @@ Two choices worth copying:
 | `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't a usable Interactive ID: it's a stock actor-based avatar, it hasn't finished converting to an interactive avatar, or it isn't in your plan. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
+| Browser connects but the agent log shows `CERTIFICATE_VERIFY_FAILED` | Corporate TLS inspection. `agent.py` already calls `truststore.inject_into_ssl()` so Python trusts the OS certificate store; make sure the proxy's root CA is installed there, and don't set `SSL_CERT_FILE`. See [Corporate proxies](https://github.com/synthesia-ai/skills/blob/main/skills/synthesia-interactive-avatar/references/api-and-troubleshooting.md#corporate-proxies-and-tls-inspection). |
 | Avatar joins but doesn't lip-sync | Something reassigned `session.output.audio` after the avatar attached. |
