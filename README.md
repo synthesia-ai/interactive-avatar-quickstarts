@@ -12,4 +12,4 @@ Each recipe is self-contained, with its own README, dependencies, and `.env.exam
 
 ## Prerequisites
 
-Every recipe needs a **Synthesia API key** for [Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars). Each recipe's README lists everything else it needs: providers, keys, and how to run it.
+Every recipe needs a **Synthesia API key** for [Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars) and a [**LiveKit Cloud**](https://cloud.livekit.io) project. Each recipe's README lists everything else it needs: providers, keys, and how to run it.

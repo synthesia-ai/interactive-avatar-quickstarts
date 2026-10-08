@@ -12,7 +12,8 @@ The form is a stand-in for any state your app shares with the avatar: a booking,
 ## Prerequisites
 
 - Python **3.10–3.14**
-- **LiveKit Cloud** project (free tier works): `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` from [cloud.livekit.io](https://cloud.livekit.io)
+- **LiveKit Cloud** project (free tier works) from [cloud.livekit.io](https://cloud.livekit.io)
+- [**LiveKit CLI**](https://github.com/livekit/livekit-cli#installation) (`brew install livekit-cli`)
 - **Synthesia** API key ([Interactive Avatars](https://www.synthesia.io/features/avatars/interactive-avatars))
 - **OpenAI** API key from [platform.openai.com](https://platform.openai.com/api-keys)
 
@@ -22,11 +23,14 @@ The form is a stand-in for any state your app shares with the avatar: a booking,
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env   # then fill in the three keys
+lk cloud auth                            # link your LiveKit project
+lk app env --write --destination .env    # writes LiveKit credentials, prompts for the rest
 
 python agent.py dev    # terminal 1: the agent worker
 python server.py       # terminal 2: frontend at http://localhost:8080
 ```
+
+Without the CLI: create an API key under **Settings → API Keys** in your LiveKit project, `cp .env.example .env`, and fill in the values.
 
 Open <http://localhost:8080>, click **Start**, and allow the microphone. Once the avatar joins, the form unlocks. Try both directions:
 
@@ -104,7 +108,7 @@ Two choices worth copying:
 | A field updates with a half-heard value mid-sentence | Preemptive generation got re-enabled. It must stay off with side-effecting tools (see `turn_handling`). |
 | `SynthesiaError` with `type` `AUTH` | API key invalid or expired. |
 | `SynthesiaError` with `type` `FEATURE_NOT_IN_PLAN` | Your Synthesia workspace's plan doesn't include Interactive Avatars. |
-| `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. |
+| `SynthesiaError` with `type` `LIVEKIT_CREDENTIALS_REJECTED` | `LIVEKIT_URL` and `LIVEKIT_API_KEY`/`LIVEKIT_API_SECRET` aren't from the same LiveKit project. Re-run `lk app env --write --destination .env`. |
 | `SynthesiaError` with `type` `UNKNOWN_AVATAR` | `SYNTHESIA_AVATAR_ID` isn't a usable Interactive ID: it's a stock actor-based avatar, it hasn't finished converting to an interactive avatar, or it isn't in your plan. |
 | `SynthesiaError` with `type` `QUOTA_EXCEEDED` | Minute or concurrent-session cap hit. |
 | Avatar never appears, no error | You're in `console` mode, `avatar.start()` ran after `session.start()`, or the token lacks the `RoomAgentDispatch` room config. |
